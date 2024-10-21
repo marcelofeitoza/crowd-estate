@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 #[derive(Accounts)]
 pub struct TransferTokens<'info> {
@@ -20,4 +20,19 @@ pub struct TransferTokens<'info> {
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+}
+
+impl<'info> TransferTokens<'info> {
+    pub fn transfer_tokens(&mut self, amount: u64) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: self.from_token_account.to_account_info(),
+            to: self.to_token_account.to_account_info(),
+            authority: self.authority.to_account_info(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        token::transfer(cpi_ctx, amount)?;
+
+        Ok(())
+    }
 }
