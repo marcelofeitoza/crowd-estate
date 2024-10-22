@@ -8,7 +8,7 @@ pub use contexts::*;
 pub use errors::*;
 pub use state::*;
 
-declare_id!("7JA2mxcVkWwJ6ccfD5rf5K979kSprp1drhG6LcjrwZCf");
+declare_id!("3KZxuntyyT436Fvwsxv9Gf2N2mDrqA3Y3oohRViZErtj");
 
 #[program]
 pub mod crowd_estate {
@@ -29,6 +29,14 @@ pub mod crowd_estate {
             token_symbol,
             bump,
         )
+    }
+
+    pub fn update_property(
+        ctx: Context<UpdateProperty>,
+        property_name: String,
+        token_symbol: String,
+    ) -> Result<()> {
+        ctx.accounts.update_property(property_name, token_symbol)
     }
 
     pub fn mint_additional_tokens(ctx: Context<MintAdditionalTokens>, amount: u64) -> Result<()> {

@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-crowd_estate = "7JA2mxcVkWwJ6ccfD5rf5K979kSprp1drhG6LcjrwZCf"
+crowd_estate = "3KZxuntyyT436Fvwsxv9Gf2N2mDrqA3Y3oohRViZErtj"
 
 [registry]
 url = "https://api.apr.dev"

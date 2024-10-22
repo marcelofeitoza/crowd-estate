@@ -152,6 +152,8 @@ describe("RWA Platform", async () => {
 			propertyMint,
 			propertyVault: propertyVault.address,
 			systemProgram: SystemProgram.programId,
+			usdcMint,
+			propertyUsdcAccount: propertyUsdcVault.address,
 			tokenProgram: TOKEN_PROGRAM_ID,
 			associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
 		};
@@ -196,6 +198,46 @@ describe("RWA Platform", async () => {
 		);
 	});
 
+	it("Updates the property", async () => {
+		const propertyAccountBefore = await program.account.property.fetch(
+			propertyPda
+		);
+		assert.equal(
+			Buffer.from(propertyAccountBefore.propertyName).toString(),
+			propertyName.toString()
+		);
+		assert.equal(
+			Buffer.from(propertyAccountBefore.tokenSymbol).toString(),
+			tokenSymbol.toString()
+		);
+
+		await program.methods
+			.updateProperty("Updated Property", "UPD")
+			.accountsPartial({
+				admin: admin.publicKey,
+				property: propertyPda,
+				propertyMint,
+				propertyVault: propertyVault.address,
+				tokenProgram: TOKEN_PROGRAM_ID,
+				associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+				systemProgram: SystemProgram.programId,
+			})
+			.signers([admin])
+			.rpc();
+
+		const propertyAccountAfter = await program.account.property.fetch(
+			propertyPda
+		);
+		assert.equal(
+			Buffer.from(propertyAccountAfter.propertyName).toString(),
+			"Updated Property"
+		);
+		assert.equal(
+			Buffer.from(propertyAccountAfter.tokenSymbol).toString(),
+			"UPD"
+		);
+	});
+
 	it("Invests in a property!", async () => {
 		const [investmentAccount] = PublicKey.findProgramAddressSync(
 			[
@@ -214,7 +256,6 @@ describe("RWA Platform", async () => {
 				investor: investor.publicKey,
 				property: propertyPda,
 				investorUsdcAccount: investorUsdcAccount.address,
-				adminUsdcAccount: adminUsdcAccount.address,
 				tokenProgram: TOKEN_PROGRAM_ID,
 				systemProgram: SystemProgram.programId,
 				admin: admin.publicKey,
@@ -284,7 +325,6 @@ describe("RWA Platform", async () => {
 					investor: investor.publicKey,
 					property: propertyPda,
 					investorUsdcAccount: investorUsdcAccount.address,
-					adminUsdcAccount: adminUsdcAccount.address,
 					tokenProgram: TOKEN_PROGRAM_ID,
 					systemProgram: SystemProgram.programId,
 					admin: admin.publicKey,
@@ -318,7 +358,6 @@ describe("RWA Platform", async () => {
 					investor: investor.publicKey,
 					property: propertyPda,
 					investorUsdcAccount: investorUsdcAccount.address,
-					adminUsdcAccount: adminUsdcAccount.address,
 					tokenProgram: TOKEN_PROGRAM_ID,
 					systemProgram: SystemProgram.programId,
 					admin: admin.publicKey,
@@ -519,7 +558,6 @@ describe("RWA Platform", async () => {
 					investor: investor.publicKey,
 					property: propertyPda,
 					investorUsdcAccount: investorUsdcAccount.address,
-					adminUsdcAccount: adminUsdcAccount.address,
 					tokenProgram: TOKEN_PROGRAM_ID,
 					systemProgram: SystemProgram.programId,
 					admin: admin.publicKey,
@@ -726,6 +764,8 @@ describe("Transfering", async () => {
 				associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
 				propertyVault: propertyVault.address,
 				admin: admin.publicKey,
+				usdcMint,
+				propertyUsdcAccount: propertyUsdcVault.address,
 				property: propertyPda,
 				propertyMint,
 				systemProgram: SystemProgram.programId,
@@ -766,7 +806,6 @@ describe("Transfering", async () => {
 				investor: investor.publicKey,
 				property: propertyPda,
 				investorUsdcAccount: investorUsdcAccount.address,
-				adminUsdcAccount: adminUsdcAccount.address,
 				tokenProgram: TOKEN_PROGRAM_ID,
 				systemProgram: SystemProgram.programId,
 				admin: admin.publicKey,

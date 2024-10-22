@@ -43,9 +43,6 @@ pub struct InvestInProperty<'info> {
     )]
     pub property_vault: Account<'info, TokenAccount>,
 
-    #[account(mut)]
-    pub admin_usdc_account: Account<'info, TokenAccount>,
-
     #[account(
         mut,
         associated_token::mint = property_mint,
@@ -62,7 +59,10 @@ impl<'info> InvestInProperty<'info> {
         let property = &mut self.property;
 
         let tokens_to_purchase = usdc_amount / property.token_price_usdc;
-        require!(tokens_to_purchase > 0, crate::errors::Errors::InsufficientAmount);
+        require!(
+            tokens_to_purchase > 0,
+            crate::errors::Errors::InsufficientAmount
+        );
 
         require!(
             property.available_tokens >= tokens_to_purchase,

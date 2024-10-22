@@ -20,3 +20,5 @@ pub mod vote_proposal;
 pub use vote_proposal::*;
 pub mod execute_proposal;
 pub use execute_proposal::*;
+pub mod update_property;
+pub use update_property::*;

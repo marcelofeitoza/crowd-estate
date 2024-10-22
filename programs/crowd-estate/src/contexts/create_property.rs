@@ -21,6 +21,9 @@ pub struct CreateProperty<'info> {
     )]
     pub property: Account<'info, Property>,
 
+    // #[account(mut, mint::decimals = 6)]
+    // pub usdc_mint: Account<'info, Mint>,
+
     #[account(
         mut,
         mint::decimals = 0,
@@ -28,6 +31,14 @@ pub struct CreateProperty<'info> {
         mint::token_program = token_program
     )]
     pub property_mint: Account<'info, Mint>,
+
+    // #[account(
+    //     init_if_needed,
+    //     payer = admin,
+    //     associated_token::mint = usdc_mint,
+    //     associated_token::authority = property,
+    // )]
+    // pub property_usdc_account: Account<'info, TokenAccount>,
 
     #[account(
         init_if_needed,
@@ -52,7 +63,10 @@ impl<'info> CreateProperty<'info> {
         bump: u8,
     ) -> Result<()> {
         require!(total_tokens > 0, crate::errors::Errors::InvalidTotalTokens);
-        require!(token_price_usdc > 0, crate::errors::Errors::InvalidTokenPrice);
+        require!(
+            token_price_usdc > 0,
+            crate::errors::Errors::InvalidTokenPrice
+        );
         require!(
             !property_name.is_empty() && property_name.len() <= 32,
             crate::errors::Errors::InvalidPropertyName
