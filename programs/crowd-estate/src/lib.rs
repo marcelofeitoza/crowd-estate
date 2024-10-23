@@ -31,12 +31,8 @@ pub mod crowd_estate {
         )
     }
 
-    pub fn update_property(
-        ctx: Context<UpdateProperty>,
-        property_name: String,
-        token_symbol: String,
-    ) -> Result<()> {
-        ctx.accounts.update_property(property_name, token_symbol)
+    pub fn update_property(ctx: Context<UpdateProperty>, token_symbol: String) -> Result<()> {
+        ctx.accounts.update_property(token_symbol)
     }
 
     pub fn mint_additional_tokens(ctx: Context<MintAdditionalTokens>, amount: u64) -> Result<()> {

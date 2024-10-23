@@ -8,9 +8,8 @@ pub struct WithdrawInvestment<'info> {
     #[account(mut)]
     pub investor: Signer<'info>,
 
-    #[account(mut)]
-    pub admin: Signer<'info>,
-
+    // #[account(mut)]
+    // pub admin: Signer<'info>,
     #[account(mut)]
     pub investor_usdc_account: Account<'info, TokenAccount>,
 

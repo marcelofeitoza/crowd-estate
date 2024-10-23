@@ -32,10 +32,10 @@ describe("RWA Platform", async () => {
 	let investorUsdcAccount: Account;
 	let investorPropertyTokenAccount: Account;
 
-	const propertyName = "Test Property";
+	let propertyName = "Test Property";
+	let tokenSymbol = "TST";
 	const totalTokens = new anchor.BN(100);
 	const pricePerToken = new anchor.BN(100 * 10 ** 6);
-	const tokenSymbol = "TST";
 
 	before(async () => {
 		const latestBlockhash = await connection.getLatestBlockhash();
@@ -203,34 +203,25 @@ describe("RWA Platform", async () => {
 			propertyPda
 		);
 		assert.equal(
-			Buffer.from(propertyAccountBefore.propertyName).toString(),
-			propertyName.toString()
-		);
-		assert.equal(
 			Buffer.from(propertyAccountBefore.tokenSymbol).toString(),
 			tokenSymbol.toString()
 		);
 
+		tokenSymbol = "UPD";
+
 		await program.methods
-			.updateProperty("Updated Property", "UPD")
+			.updateProperty(tokenSymbol)
 			.accountsPartial({
 				admin: admin.publicKey,
 				property: propertyPda,
-				propertyMint,
-				propertyVault: propertyVault.address,
-				tokenProgram: TOKEN_PROGRAM_ID,
 				associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-				systemProgram: SystemProgram.programId,
+				// systemProgram: SystemProgram.programId,
 			})
 			.signers([admin])
 			.rpc();
 
 		const propertyAccountAfter = await program.account.property.fetch(
 			propertyPda
-		);
-		assert.equal(
-			Buffer.from(propertyAccountAfter.propertyName).toString(),
-			"Updated Property"
 		);
 		assert.equal(
 			Buffer.from(propertyAccountAfter.tokenSymbol).toString(),
@@ -258,13 +249,13 @@ describe("RWA Platform", async () => {
 				investorUsdcAccount: investorUsdcAccount.address,
 				tokenProgram: TOKEN_PROGRAM_ID,
 				systemProgram: SystemProgram.programId,
-				admin: admin.publicKey,
+				// admin: admin.publicKey,
 				propertyMint,
 				investorPropertyTokenAccount:
 					investorPropertyTokenAccount.address,
 				investmentAccount,
 			})
-			.signers([investor, admin])
+			.signers([investor /*, admin*/])
 			.rpc()
 			.catch(async (error) => {
 				console.log(await error.getLogs(connection));
@@ -302,7 +293,7 @@ describe("RWA Platform", async () => {
 				propertyUsdcAccount: propertyUsdcVault.address,
 				propertyVault: propertyVault.address,
 				investor: investor.publicKey,
-				admin: admin.publicKey,
+				// admin: admin.publicKey,
 				investorUsdcAccount: investorUsdcAccount.address,
 				investmentAccount: investmentAccount,
 				property: propertyPda,
@@ -313,7 +304,7 @@ describe("RWA Platform", async () => {
 				systemProgram: SystemProgram.programId,
 				tokenProgram: TOKEN_PROGRAM_ID,
 			})
-			.signers([admin, investor])
+			.signers([investor])
 			.rpc();
 
 		try {
@@ -327,13 +318,13 @@ describe("RWA Platform", async () => {
 					investorUsdcAccount: investorUsdcAccount.address,
 					tokenProgram: TOKEN_PROGRAM_ID,
 					systemProgram: SystemProgram.programId,
-					admin: admin.publicKey,
+					// admin: admin.publicKey,
 					propertyMint,
 					investorPropertyTokenAccount:
 						investorPropertyTokenAccount.address,
 					investmentAccount: investmentAccount,
 				})
-				.signers([investor, admin])
+				.signers([investor /*, admin*/])
 				.rpc();
 			assert.fail("Expected an error but did not get one");
 		} catch (error) {
@@ -360,13 +351,13 @@ describe("RWA Platform", async () => {
 					investorUsdcAccount: investorUsdcAccount.address,
 					tokenProgram: TOKEN_PROGRAM_ID,
 					systemProgram: SystemProgram.programId,
-					admin: admin.publicKey,
+					// admin: admin.publicKey,
 					propertyMint,
 					investorPropertyTokenAccount:
 						investorPropertyTokenAccount.address,
 					investmentAccount: investmentAccount,
 				})
-				.signers([investor, admin])
+				.signers([investor /*, admin*/])
 				.rpc();
 		} catch (error) {
 			assert.equal(
@@ -473,7 +464,7 @@ describe("RWA Platform", async () => {
 				propertyUsdcAccount: propertyUsdcVault.address,
 				propertyVault: propertyVault.address,
 				investor: investor.publicKey,
-				admin: admin.publicKey,
+				// admin: admin.publicKey,
 				investorUsdcAccount: investorUsdcAccount.address,
 				investmentAccount: investmentAccount,
 				property: propertyPda,
@@ -484,7 +475,7 @@ describe("RWA Platform", async () => {
 				systemProgram: SystemProgram.programId,
 				tokenProgram: TOKEN_PROGRAM_ID,
 			})
-			.signers([admin, investor])
+			.signers([investor /*, admin*/])
 			.rpc();
 
 		const finalUsdcBalance = await connection.getTokenAccountBalance(
@@ -560,13 +551,13 @@ describe("RWA Platform", async () => {
 					investorUsdcAccount: investorUsdcAccount.address,
 					tokenProgram: TOKEN_PROGRAM_ID,
 					systemProgram: SystemProgram.programId,
-					admin: admin.publicKey,
+					// admin: admin.publicKey,
 					propertyMint,
 					investorPropertyTokenAccount:
 						investorPropertyTokenAccount.address,
 					investmentAccount: investmentAccount,
 				})
-				.signers([investor, admin])
+				.signers([investor /*, admin*/])
 				.rpc();
 		} catch (error) {
 			assert.equal(
@@ -764,8 +755,6 @@ describe("Transfering", async () => {
 				associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
 				propertyVault: propertyVault.address,
 				admin: admin.publicKey,
-				usdcMint,
-				propertyUsdcAccount: propertyUsdcVault.address,
 				property: propertyPda,
 				propertyMint,
 				systemProgram: SystemProgram.programId,
@@ -808,7 +797,7 @@ describe("Transfering", async () => {
 				investorUsdcAccount: investorUsdcAccount.address,
 				tokenProgram: TOKEN_PROGRAM_ID,
 				systemProgram: SystemProgram.programId,
-				admin: admin.publicKey,
+				// admin: admin.publicKey,
 				propertyMint,
 				investorPropertyTokenAccount:
 					investorPropertyTokenAccount.address,
@@ -816,7 +805,7 @@ describe("Transfering", async () => {
 				propertyUsdcAccount: propertyUsdcVault.address,
 				propertyVault: propertyVault.address,
 			})
-			.signers([investor, admin])
+			.signers([investor /*, admin*/])
 			.rpc();
 
 		const propertyAccountAfter = await program.account.property.fetch(

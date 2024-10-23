@@ -21,9 +21,6 @@ pub struct CreateProperty<'info> {
     )]
     pub property: Account<'info, Property>,
 
-    // #[account(mut, mint::decimals = 6)]
-    // pub usdc_mint: Account<'info, Mint>,
-
     #[account(
         mut,
         mint::decimals = 0,
@@ -31,14 +28,6 @@ pub struct CreateProperty<'info> {
         mint::token_program = token_program
     )]
     pub property_mint: Account<'info, Mint>,
-
-    // #[account(
-    //     init_if_needed,
-    //     payer = admin,
-    //     associated_token::mint = usdc_mint,
-    //     associated_token::authority = property,
-    // )]
-    // pub property_usdc_account: Account<'info, TokenAccount>,
 
     #[account(
         init_if_needed,

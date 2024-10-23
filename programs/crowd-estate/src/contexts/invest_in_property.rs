@@ -5,9 +5,8 @@ use crate::state::{Investor, Property};
 
 #[derive(Accounts)]
 pub struct InvestInProperty<'info> {
-    #[account(mut)]
-    pub admin: Signer<'info>,
-
+    // #[account(mut)]
+    // pub admin: Signer<'info>,
     #[account(mut)]
     pub investor: Signer<'info>,
 
@@ -23,11 +22,7 @@ pub struct InvestInProperty<'info> {
     )]
     pub investment_account: Account<'info, Investor>,
 
-    #[account(
-        mut,
-        seeds = [b"property", admin.key().as_ref(), &property.property_name],
-        bump = property.bump,
-    )]
+    #[account(mut)]
     pub property: Account<'info, Property>,
 
     #[account(mut)]
