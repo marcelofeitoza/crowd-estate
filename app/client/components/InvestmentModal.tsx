@@ -32,7 +32,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Progress } from "./ui/progress";
 import { Separator } from "./ui/separator";
 import { Coins, DollarSign, PieChart } from "lucide-react";
-import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { useAnchor } from "@/hooks/use-anchor";
 
 interface InvestModalProps {
@@ -50,48 +50,101 @@ export const InvestModal = ({
 	const [tokenAmount, setTokenAmount] = useState<number>(0);
 	const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 	const [isOpen, setIsOpen] = useState<boolean>(false);
+	const [usdcAccountExists, setUsdcAccountExists] = useState<boolean>(true);
 
 	const [walletUsdcBalance, setWalletUsdcBalance] = useState<number>(0);
-	const [, setErrorUsdcBalance] = useState<boolean>(false);
+	// const [, setErrorUsdcBalance] = useState<boolean>(false);
 
 	const maxInvestmentUSDC =
 		property.available_tokens * property.token_price_usdc;
 	const tokenPriceUSDC = property.token_price_usdc;
 
 	useEffect(() => {
-		const getUsdcBalance = async () => {
+		const checkUsdcAccount = async () => {
 			try {
+				const usdcMintInfo = await provider.connection.getAccountInfo(
+					USDC_MINT
+				);
+				if (!usdcMintInfo) {
+					console.error("USDC mint is invalid.");
+					return;
+				} else {
+					console.log(
+						"USDC mint is valid on RPC: ",
+						provider.connection.rpcEndpoint
+					);
+				}
+
 				const userUsdcAddress = await getAssociatedTokenAddress(
 					USDC_MINT,
 					wallet.publicKey
 				);
 
-				const balance = await provider.connection
-					.getTokenAccountBalance(userUsdcAddress)
-					.then((balance) => balance.value.uiAmount)
-					.catch((error) => {
-						console.error("Erro ao obter saldo de USDC:", error);
-						setWalletUsdcBalance(0);
-						setErrorUsdcBalance(true);
-						throw error;
-					});
+				const accountInfo = await provider.connection.getAccountInfo(
+					userUsdcAddress
+				);
 
-				if (balance === 0) {
-					mintUsdc(1000, userUsdcAddress);
+				if (accountInfo) {
+					const balance = await provider.connection
+						.getTokenAccountBalance(userUsdcAddress)
+						.then((balance) => balance.value.uiAmount)
+						.catch((error) => {
+							console.error(
+								"Error fetching USDC balance:",
+								error
+							);
+							return 0;
+						});
+
+					setWalletUsdcBalance(balance);
+				} else {
+					console.log("USDC account does not exist.");
+					setUsdcAccountExists(false);
 				}
-
-				console.log("Saldo USDC:", balance);
-				setWalletUsdcBalance(balance);
 			} catch (error) {
-				console.error("Erro ao obter saldo de USDC:", error);
-				setWalletUsdcBalance(0);
+				console.error("Error checking USDC account:", error);
+				setUsdcAccountExists(false);
 			}
 		};
 
 		if (wallet.publicKey) {
-			getUsdcBalance();
+			checkUsdcAccount();
 		}
 	}, [provider, wallet]);
+	// useEffect(() => {
+	// 	const getUsdcBalance = async () => {
+	// 		try {
+	// 			const userUsdcAddress = await getAssociatedTokenAddress(
+	// 				USDC_MINT,
+	// 				wallet.publicKey
+	// 			);
+
+	// 			const balance = await provider.connection
+	// 				.getTokenAccountBalance(userUsdcAddress)
+	// 				.then((balance) => balance.value.uiAmount)
+	// 				.catch((error) => {
+	// 					console.error("Erro ao obter saldo de USDC:", error);
+	// 					setWalletUsdcBalance(0);
+	// 					setErrorUsdcBalance(true);
+	// 					throw error;
+	// 				});
+
+	// 			if (balance === 0) {
+	// 				mintUsdc(1000, userUsdcAddress);
+	// 			}
+
+	// 			console.log("Saldo USDC:", balance);
+	// 			setWalletUsdcBalance(balance);
+	// 		} catch (error) {
+	// 			console.error("Erro ao obter saldo de USDC:", error);
+	// 			setWalletUsdcBalance(0);
+	// 		}
+	// 	};
+
+	// 	if (wallet.publicKey) {
+	// 		getUsdcBalance();
+	// 	}
+	// }, [provider, wallet]);
 
 	const handleUsdcChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const newUsdcAmount = Number(e.target.value);
@@ -158,7 +211,7 @@ export const InvestModal = ({
 		try {
 			setIsSubmitting(true);
 
-			const [investmentPda] = await PublicKey.findProgramAddress(
+			const [investmentPda] = PublicKey.findProgramAddressSync(
 				[
 					Buffer.from("investment"),
 					wallet.publicKey.toBuffer(),
@@ -171,6 +224,7 @@ export const InvestModal = ({
 			const tx = new Transaction();
 
 			const investorUsdcAta = await ensureAssociatedTokenAccount(
+				provider.connection,
 				tx,
 				USDC_MINT,
 				wallet.publicKey,
@@ -179,6 +233,7 @@ export const InvestModal = ({
 			console.log("investorUsdcAta", investorUsdcAta.toBase58());
 
 			const investorPropertyAta = await ensureAssociatedTokenAccount(
+				provider.connection,
 				tx,
 				new PublicKey(property.mint),
 				wallet.publicKey,
@@ -187,6 +242,7 @@ export const InvestModal = ({
 			console.log("investorPropertyAta", investorPropertyAta.toBase58());
 
 			const propertyUsdcAta = await ensureAssociatedTokenAccount(
+				provider.connection,
 				tx,
 				USDC_MINT,
 				new PublicKey(property.publicKey),
@@ -196,6 +252,7 @@ export const InvestModal = ({
 			console.log("propertyUsdcAta", propertyUsdcAta.toBase58());
 
 			const propertyVaultAta = await ensureAssociatedTokenAccount(
+				provider.connection,
 				tx,
 				new PublicKey(property.mint),
 				new PublicKey(property.publicKey),
@@ -208,7 +265,6 @@ export const InvestModal = ({
 				property: new PublicKey(property.publicKey),
 				propertyMint: new PublicKey(property.mint),
 				investor: wallet.publicKey,
-				// admin: new PublicKey(property.admin),
 				investmentAccount: investmentPda,
 				propertyUsdcAccount: propertyUsdcAta,
 				investorUsdcAccount: investorUsdcAta,
@@ -225,7 +281,6 @@ export const InvestModal = ({
 					property: new PublicKey(property.publicKey),
 					propertyMint: new PublicKey(property.mint),
 					investor: wallet.publicKey,
-					// admin: new PublicKey(property.admin),
 					investmentAccount: investmentPda,
 					propertyUsdcAccount: propertyUsdcAta,
 					investorUsdcAccount: investorUsdcAta,
@@ -288,6 +343,106 @@ export const InvestModal = ({
 			setIsSubmitting(false);
 		}
 	};
+
+	const handleCreateUsdcAccount = async () => {
+		try {
+			if (!wallet.publicKey || !provider) {
+				toast({
+					title: "Erro",
+					description:
+						"Carteira não conectada ou provider indisponível.",
+					variant: "destructive",
+				});
+				return;
+			}
+
+			const userUsdcAddress = await getAssociatedTokenAddress(
+				USDC_MINT,
+				wallet.publicKey
+			);
+
+			// Verificar novamente se a conta já existe
+			const accountInfo = await provider.connection.getAccountInfo(
+				userUsdcAddress
+			);
+			if (accountInfo) {
+				toast({
+					title: "Informação",
+					description: "Conta USDC já existe.",
+					variant: "default",
+				});
+				setUsdcAccountExists(true);
+				return;
+			}
+
+			const tx = new Transaction().add(
+				createAssociatedTokenAccountInstruction(
+					wallet.publicKey, // Payer
+					userUsdcAddress, // ATA
+					wallet.publicKey, // Owner
+					USDC_MINT // Mint
+				)
+			);
+			tx.recentBlockhash = (
+				await provider.connection.getLatestBlockhash()
+			).blockhash;
+			tx.feePayer = wallet.publicKey;
+
+			console.log("Enviando transação para criar conta USDC:", tx);
+
+			const signTx = await wallet.signTransaction(
+				tx
+			);
+			const signature = await provider.connection.sendRawTransaction(
+				signTx.serialize()
+			);
+
+			console.log("Transação enviada com sucesso:", signature);
+
+			console.log(
+				"Conta USDC criada com sucesso:",
+				userUsdcAddress.toBase58()
+			);
+
+			toast({
+				title: "Sucesso",
+				description: "Conta USDC criada com sucesso.",
+				variant: "default",
+			});
+
+			setUsdcAccountExists(true);
+		} catch (error) {
+			console.error("Error creating USDC account:", error);
+			toast({
+				title: "Erro",
+				description:
+					"Falha ao criar a conta USDC. Por favor, tente novamente.",
+				variant: "destructive",
+			});
+		}
+	};
+
+	const [isMinting, setIsMinting] = useState<boolean>(false);
+
+const handleMintUsdc = async () => {
+    try {
+        setIsMinting(true);
+        const usdcAccount = await getAssociatedTokenAddress(USDC_MINT, wallet.publicKey);
+        await mintUsdc(provider.connection, 1000, usdcAccount);
+        const balance = await provider.connection
+            .getTokenAccountBalance(usdcAccount)
+            .then((balance) => balance.value.uiAmount)
+            .catch((error) => {
+                console.error("Error fetching USDC balance:", error);
+                return 0;
+            });
+        setWalletUsdcBalance(balance);
+    } catch (error) {
+        console.error("Error minting USDC:", error);
+    } finally {
+        setIsMinting(false);
+    }
+};
 
 	return (
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -403,9 +558,24 @@ export const InvestModal = ({
 						</div>
 					</div>
 
-					<p className="text-sm text-muted-foreground">
-						Saldo USDC: {walletUsdcBalance.toFixed(2)} <Button variant="link" onClick={()=>mintUsdc(1000, wallet.publicKey)}>+</Button>
-					</p>
+					{!usdcAccountExists ? (
+                    <div className="mb-6">
+                        <Button
+                            variant="default"
+                            onClick={handleCreateUsdcAccount}
+                        >
+                            Create USDC Account
+                        </Button>
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground">
+                        Saldo USDC: {walletUsdcBalance.toFixed(2)}{" "}
+                        <Button variant="link" onClick={handleMintUsdc}>
+                            {isMinting ? <LoadingSpinner /> : "+"}
+                        </Button>
+                    </p>
+                )}
+
 
 					<Button type="submit" disabled={isSubmitting}>
 						{isSubmitting ? (

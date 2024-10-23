@@ -51,6 +51,7 @@ export const InvestmentCard = ({
 		</CardContent>
 		<CardFooter>
 			{investment.amount > 0 && <ManageInvestmentModal investment={investment} onManagementSuccess={onManagementSuccess} />}
+
 		</CardFooter>
 	</Card>
 );

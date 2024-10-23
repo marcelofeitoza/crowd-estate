@@ -5,7 +5,6 @@ import {
 	Transaction,
 } from "@solana/web3.js";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
-
 import * as anchor from "@coral-xyz/anchor";
 import {
 	createAssociatedTokenAccountInstruction,
@@ -20,12 +19,15 @@ if (!PRIVATE_KEY) {
 }
 const ADM = Uint8Array.from(JSON.parse(PRIVATE_KEY));
 const admKeypair = anchor.web3.Keypair.fromSecretKey(ADM);
+console.log("ADM Keypair: ", admKeypair.publicKey.toString());
 
-export const network = WalletAdapterNetwork.Devnet;
-export const endpoint = "http://127.0.0.1:8899";
-export const connection = new Connection(endpoint, "confirmed");
+export const network = WalletAdapterNetwork.Devnet; // "http://localhost:8899";
+export const endpoint =
+	// "http://localhost:8899"
+	"https://api.devnet.solana.com";
 export const USDC_MINT = new PublicKey(
-	"dVHYHTEVz7FW7QctiJJsfYQSSmKS3VVTHVpejHseZom"
+	// "dVHYHTEVz7FW7QctiJJsfYQSSmKS3VVTHVpejHseZom" // "http://localhost:8899"
+	"5AvgBHv4sAxF2K8AHYV3jZrkqWiDsqq5TGmRqX2S2xQH" // "https://api.devnet.solana.com"
 );
 
 export interface Property {
@@ -51,6 +53,7 @@ export interface Investment {
 }
 
 export const ensureAssociatedTokenAccount = async (
+	connection: Connection,
 	tx: Transaction,
 	mint: PublicKey,
 	owner: PublicKey,
@@ -97,42 +100,53 @@ export const ellipsify = (str: string) => {
 };
 
 export const mintUsdc = async (
-	amount: number,
-	recipientUsdcAccount: PublicKey
+    connection: Connection,
+    amount: number,
+    recipientUsdcAccount: PublicKey
 ) => {
-	const balanceBefore = await connection.getTokenAccountBalance(
-		recipientUsdcAccount
-	);
-	console.log(
-		"Recipient USDC Account Balance Before: ",
-		balanceBefore.value.uiAmount
-	);
+    const balanceBefore = await connection.getTokenAccountBalance(
+        recipientUsdcAccount
+    );
+    console.log(
+        "Recipient USDC Account Balance Before: ",
+        balanceBefore.value.uiAmount
+    );
 
-	mintTo(
-		connection,
-		admKeypair,
-		USDC_MINT,
-		recipientUsdcAccount,
-		admKeypair.publicKey,
-		amount * 10 ** 6
-	);
+    let balanceAfter = balanceBefore;
 
-	const balanceAfter = await connection.getTokenAccountBalance(
-		recipientUsdcAccount
-	);
-	console.log(
-		"Recipient USDC Account Balance After: ",
-		balanceAfter.value.uiAmount
-	);
+    while (balanceAfter.value.uiAmount <= balanceBefore.value.uiAmount) {
+        await mintTo(
+            connection,
+            admKeypair,
+            USDC_MINT,
+            recipientUsdcAccount,
+            admKeypair.publicKey,
+            amount * 10 ** 6
+        );
+
+        balanceAfter = await connection.getTokenAccountBalance(
+            recipientUsdcAccount
+        );
+        console.log(
+            "Recipient USDC Account Balance After: ",
+            balanceAfter.value.uiAmount
+        );
+    }
+
+    return balanceAfter.value.uiAmount;
 };
 
-export const setup = async () => {
-	await connection.confirmTransaction(
-		await connection.requestAirdrop(
-			admKeypair.publicKey,
-			1_000 * LAMPORTS_PER_SOL
-		)
-	);
+export const setupUsdc = async (connection: Connection) => {
+	while (
+		(await connection.getBalance(admKeypair.publicKey)) <
+		5 * LAMPORTS_PER_SOL
+	)
+		await connection.confirmTransaction(
+			await connection.requestAirdrop(
+				admKeypair.publicKey,
+				1 * LAMPORTS_PER_SOL
+			)
+		);
 
 	console.log("Platform pubkey: ", admKeypair.publicKey.toString());
 
@@ -143,5 +157,12 @@ export const setup = async () => {
 		null,
 		6
 	);
+
 	console.log("USDC Mint: ", usdcMint.toBase58());
+
+	const usdcMintInfo = await connection.getAccountInfo(usdcMint);
+
+	if (!usdcMintInfo) {
+		throw new Error("USDC mint not found");
+	}
 };

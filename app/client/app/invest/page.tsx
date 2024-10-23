@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Investment, mintUsdc, Property, USDC_MINT } from "@/utils/solana";
+import { Investment, Property } from "@/utils/solana";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -10,23 +10,17 @@ import { toast } from "@/hooks/use-toast";
 import { Building, Wallet } from "lucide-react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { PropertyCard } from "@/components/PropertyCard";
-import {
-	createAssociatedTokenAccountInstruction,
-	getAssociatedTokenAddress,
-} from "@solana/spl-token";
-import { Transaction } from "@solana/web3.js";
-import { ManageInvestmentModal } from "@/components/ManageInvestmentModal";
 import { useAnchor } from "@/hooks/use-anchor";
+import { InvestmentCard } from "@/components/InvestmentCard";
 
 export default function Invest() {
-	const { program, provider } = useAnchor();
+	const { program } = useAnchor();
 	const wallet = useWallet();
 
 	const [properties, setProperties] = useState<Property[]>([]);
 	const [investments, setInvestments] = useState<Investment[]>([]);
 	const [isLoadingProperties, setIsLoadingProperties] = useState(false);
 	const [isLoadingInvestments, setIsLoadingInvestments] = useState(false);
-	const [, setWalletUsdcBalance] = useState<number>(0);
 
 	const fetchProperties = useCallback(async () => {
 		try {
@@ -109,74 +103,22 @@ export default function Invest() {
 		}
 	}, [program, wallet.publicKey]);
 
-	useEffect(() => {
-		const getUsdcBalance = async () => {
-			try {
-				const userUsdcAddress = await getAssociatedTokenAddress(
-					USDC_MINT,
-					wallet.publicKey
-				);
-
-				const balance = await provider.connection
-					.getTokenAccountBalance(userUsdcAddress)
-					.then((balance) => balance.value.uiAmount)
-					.catch(async (error) => {
-						console.error("Erro ao obter saldo de USDC:", error);
-
-						const tx = new Transaction().add(
-							createAssociatedTokenAccountInstruction(
-								wallet.publicKey,
-								userUsdcAddress,
-								wallet.publicKey,
-								USDC_MINT
-							)
-						);
-						const signature = await wallet.sendTransaction(
-							tx,
-							provider.connection
-						);
-						await provider.connection.confirmTransaction(
-							signature,
-							"confirmed"
-						);
-						return 0;
-					});
-
-				if (balance === 0) {
-					await mintUsdc(1000, userUsdcAddress);
-				}
-
-				console.log("Saldo USDC:", balance);
-				setWalletUsdcBalance(balance);
-			} catch (error) {
-				console.error("Erro ao obter saldo de USDC:", error);
-				setWalletUsdcBalance(0);
-			}
-		};
-
-		if (wallet.publicKey) {
-			getUsdcBalance();
-		}
-	}, [provider, wallet, wallet.publicKey]);
+	
 
 	useEffect(() => {
-		if (program && provider && wallet.publicKey) {
+		if (program && wallet.publicKey) {
 			console.log("Fetching properties and investments...");
 			fetchProperties();
 			fetchInvestments();
 		}
-	}, [
-		fetchInvestments,
-		fetchProperties,
-		program,
-		provider,
-		wallet.publicKey,
-	]);
+	}, [fetchInvestments, fetchProperties, program, wallet.publicKey]);
 
 	const handleSuccess = () => {
 		fetchInvestments();
 		fetchProperties();
 	};
+
+	
 
 	return (
 		<div className="min-h-screen bg-background text-foreground">
@@ -239,7 +181,7 @@ export default function Invest() {
 						) : investments.length > 0 ? (
 							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 								{investments.map((investment) => (
-									<ManageInvestmentModal
+									<InvestmentCard
 										key={investment.publicKey}
 										onManagementSuccess={handleSuccess}
 										investment={investment}
