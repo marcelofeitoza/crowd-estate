@@ -20,7 +20,6 @@ import {
 	USDC_MINT,
 } from "@/utils/solana";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useAnchor } from "@/utils/solana";
 import * as anchor from "@coral-xyz/anchor";
 import {
 	PublicKey,
@@ -34,6 +33,7 @@ import { Progress } from "./ui/progress";
 import { Separator } from "./ui/separator";
 import { Coins, DollarSign, PieChart } from "lucide-react";
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { useAnchor } from "@/hooks/use-anchor";
 
 interface InvestModalProps {
 	property: Property;

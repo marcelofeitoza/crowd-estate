@@ -1,7 +1,7 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Navbar } from "../../components/Navbar";
+import { Navbar } from "@/components/Navbar";
 import { useCallback, useEffect, useState } from "react";
 import * as anchor from "@coral-xyz/anchor";
 import { USDC_MINT } from "@/utils/solana";
@@ -18,23 +18,23 @@ import {
 	getAssociatedTokenAddress,
 	TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { Badge } from "../../components/ui/badge";
-import { Input } from "../../components/ui/input";
-import { Button } from "../../components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardHeader,
 	CardTitle,
 	CardContent,
-} from "../../components/ui/card";
+} from "@/components/ui/card";
 import {
 	Dialog,
 	DialogTrigger,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
-} from "../../components/ui/dialog";
-import { Label } from "../../components/ui/label";
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useAnchor } from "@/hooks/use-anchor";
 
 interface Property {
@@ -55,10 +55,10 @@ export default function Admin() {
 
 	const [properties, setProperties] = useState<Property[]>([]);
 	const [form, setForm] = useState({
-		propertyName: "TESTE",
-		totalTokens: 100,
-		pricePerToken: 100,
-		tokenSymbol: "TST",
+		propertyName: "San Francisco Property",
+		totalTokens: 1_000,
+		pricePerToken: 1_000,
+		tokenSymbol: "SFP",
 	});
 	const [, setIsModalOpen] = useState(false);
 

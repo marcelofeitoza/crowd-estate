@@ -14,7 +14,11 @@ import {
 	mintTo,
 } from "@solana/spl-token";
 
-const ADM = new Uint8Array(process.env.NEXT_PUBLIC_ADM.split(", ").map(Number));
+const PRIVATE_KEY = process.env.NEXT_PUBLIC_ADM;
+if (!PRIVATE_KEY) {
+	throw new Error("ADM private key is required");
+}
+const ADM = Uint8Array.from(JSON.parse(PRIVATE_KEY));
 const admKeypair = anchor.web3.Keypair.fromSecretKey(ADM);
 
 export const network = WalletAdapterNetwork.Devnet;

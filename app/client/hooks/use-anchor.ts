@@ -1,10 +1,8 @@
-import {
-	Connection,
-} from "@solana/web3.js";
+import { Connection } from "@solana/web3.js";
 
 import * as anchor from "@coral-xyz/anchor";
-import { CrowdEstate } from "../../../target/types/crowd_estate";
-import IDL from "../../../target/idl/crowd_estate.json";
+import { CrowdEstate } from "@/idl/types/crowd_estate";
+import IDL from "@/idl/idl/crowd_estate.json";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { useMemo } from "react";
 import { endpoint } from "@/utils/solana";

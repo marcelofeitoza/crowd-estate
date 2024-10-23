@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import "@solana/wallet-adapter-react-ui/styles.css";
-import AppWalletProvider from "../components/AppWalletProvider";
+import AppWalletProvider from "@/components/AppWalletProvider";
 import { ToastProvider } from "@/components/ui/toast";
 
 const geistSans = localFont({
