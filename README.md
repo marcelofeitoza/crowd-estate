@@ -42,12 +42,12 @@ Crowd-Estate is a blockchain-based crowdfunding platform for real estate project
 
 #### **Frontend (Next.js + Tailwind CSS)**
 
--   [ ] Create a responsive and intuitive user interface
--   [ ] Implement the following pages/components:
-    -   [ ] **Home Page** with featured properties
-    -   [ ] **Property Listing Page** displaying all properties
-    -   [ ] **Property Detail Page** with investment options
-    -   [ ] **User Dashboard** to track investments and returns
+-   [x] Create a responsive and intuitive user interface
+-   [x] Implement the following pages/components:
+    -   [x] **Home Page** with featured properties
+    -   [x] **Property Listing Page** displaying all properties
+    -   [x] **Property Detail Page** with investment options
+    -   [x] **User Dashboard** to track investments and returns
 -   [ ] Implement proper state management using React Context or Redux
 
 ---

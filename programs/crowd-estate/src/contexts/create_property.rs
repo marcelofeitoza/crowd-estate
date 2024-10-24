@@ -62,7 +62,7 @@ impl<'info> CreateProperty<'info> {
             crate::errors::Errors::InvalidPropertyName
         );
         require!(
-            !token_symbol.is_empty() && token_symbol.len() <= 3,
+            !token_symbol.is_empty() && (token_symbol.len() <= 5 || token_symbol.len() >= 3),
             crate::errors::Errors::InvalidTokenSymbol
         );
 
