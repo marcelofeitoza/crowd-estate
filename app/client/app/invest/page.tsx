@@ -12,6 +12,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { PropertyCard } from "@/components/PropertyCard";
 import { useAnchor } from "@/hooks/use-anchor";
 import { InvestmentCard } from "@/components/InvestmentCard";
+import { Profile } from "@/components/Profile";
 
 export default function Invest() {
 	const { program } = useAnchor();
@@ -21,6 +22,8 @@ export default function Invest() {
 	const [investments, setInvestments] = useState<Investment[]>([]);
 	const [isLoadingProperties, setIsLoadingProperties] = useState(false);
 	const [isLoadingInvestments, setIsLoadingInvestments] = useState(false);
+	const [totalInvested, setTotalInvested] = useState(0);
+	const [totalReturns, setTotalReturns] = useState(0);
 
 	const fetchProperties = useCallback(async () => {
 		try {
@@ -90,6 +93,21 @@ export default function Invest() {
 				}));
 
 			setInvestments(investmentsData);
+
+			// Calculate total invested and returns
+			let invested = 0;
+			let returns = 0;
+			investmentsData.forEach((investment) => {
+				const property = properties.find(
+					(p) => p.publicKey === investment.property
+				);
+				if (property) {
+					invested += investment.amount * property.token_price_usdc;
+					returns += investment.dividendsClaimed / 1e6;
+				}
+			});
+			setTotalInvested(invested);
+			setTotalReturns(returns);
 		} catch (error) {
 			console.error("Error fetching investments:", error);
 			toast({
@@ -101,13 +119,10 @@ export default function Invest() {
 		} finally {
 			setIsLoadingInvestments(false);
 		}
-	}, [program, wallet.publicKey]);
-
-	
+	}, [program, wallet.publicKey, properties]);
 
 	useEffect(() => {
 		if (program && wallet.publicKey) {
-			console.log("Fetching properties and investments...");
 			fetchProperties();
 			fetchInvestments();
 		}
@@ -118,13 +133,19 @@ export default function Invest() {
 		fetchProperties();
 	};
 
-	
-
 	return (
 		<div className="min-h-screen bg-background text-foreground">
 			<Navbar />
 
 			<main className="container mx-auto p-6">
+				<Profile
+					wallet={wallet}
+					totalInvested={totalInvested}
+					totalReturns={totalReturns}
+					investments={investments}
+					type="investor"
+				/>
+
 				<Tabs defaultValue="properties" className="mb-6">
 					<TabsList className="mb-8">
 						<TabsTrigger value="properties">
@@ -136,6 +157,7 @@ export default function Invest() {
 							Your Investments
 						</TabsTrigger>
 					</TabsList>
+
 					<TabsContent value="properties">
 						<div className="flex justify-between items-center mb-6">
 							<h2 className="text-3xl font-bold">
@@ -165,6 +187,7 @@ export default function Invest() {
 							</p>
 						)}
 					</TabsContent>
+
 					<TabsContent value="investments">
 						<div className="flex justify-between items-center mb-6">
 							<h2 className="text-3xl font-bold">

@@ -1,9 +1,7 @@
-import {
-	Loader2,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 
-export const LoadingSpinner = () => (
-	<div className="flex justify-center items-center h-64">
-		<Loader2 className="w-8 h-8 animate-spin text-primary" />
-	</div>
+export const LoadingSpinner = ({ height = 64 }: { height?: number }) => (
+  <div className={`flex justify-center items-center h-${height}`}>
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
 );
