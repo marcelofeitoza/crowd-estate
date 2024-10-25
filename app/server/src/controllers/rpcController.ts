@@ -1,8 +1,8 @@
 import http from "http";
 import dotenv from "dotenv";
 import { handleLogin } from "./user/login";
-import { handleRegister } from "./register";
 import { handleCreateProperty } from "./program/createProperty";
+import { handleRegister } from "./user/register";
 
 dotenv.config();
 

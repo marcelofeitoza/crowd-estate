@@ -1,6 +1,6 @@
-import { Role, User } from "../models/User";
-import redisClient from "../services/redis";
-import { supabase } from "../services/supabase";
+import { Role } from "../../models/User";
+import redisClient from "../../services/redis";
+import { supabase } from "../../services/supabase";
 
 export const handleRegister = async (body: any) => {
 	const { publicKey, name, role } = body;

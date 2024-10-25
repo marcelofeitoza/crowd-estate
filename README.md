@@ -6,38 +6,47 @@ Crowd-Estate is a blockchain-based crowdfunding platform for real estate project
 
 -   **Fractional Property Ownership**: Tokenized real estate properties, allowing users to invest in fractions of a property.
 -   **Property Investment**: Users can invest in properties using USDC and receive tokens representing their ownership.
--   **Dividends Distribution**: Investors can claim dividends based on their property ownership.
--   **Governance**: Investors can create and vote on proposals, such as minting additional tokens or changing the property admin.
+-   **Dividend Distribution**: Investors can claim dividends based on their property ownership.
+-   **Governance**: Investors can create and vote on proposals, such as minting additional tokens or changing the property administrator.
 -   **Secure Withdrawals**: Investors can withdraw their investments, returning their tokens and receiving USDC.
--   **Property Closure**: Admins can close properties after all tokens are burned or withdrawn.
+-   **Property Closure**: Administrators can close properties after all tokens are burned or withdrawn.
+
+## Technologies Used
+
+-   **Blockchain**: Solana, Anchor
+-   **Backend**: Node.js, TypeScript, Express.js (recommended)
+-   **Database**: Supabase
+-   **Frontend**: Next.js, React, Tailwind CSS
+-   **Cache**: Redis
+-   **Others**: Axios, React Context, Solana Wallet Adapter
 
 ## Checklist: Crowd-Estate - Real Estate RWA Crowdfunding Platform
 
-### Essential Features
+### **Essentials**
 
 #### **Blockchain (Solana & Anchor)**
 
 -   [x] Implement smart contracts for:
-    -   [x] Real estate property tokenization
-    -   [x] Investment handling and tracking
+    -   [x] Tokenization of real estate properties
+    -   [x] Handling and tracking investments
 -   [x] Implement efficient state management using Solana's account model
 -   [x] Use Program Derived Addresses (PDAs) appropriately for account management
 
-#### **Backend (Python FastAPI)**
+#### **Backend (Node.js & TypeScript)**
 
--   [ ] Develop API endpoints for:
-    -   [ ] User management (registration, login, profile updates)
-    -   [ ] Property CRUD operations (create, read, update, delete properties)
+-   [x] Develop API endpoints for:
+    -   [x] User management (registration, login, profile updates)
+    -   [x] Property CRUD operations (create, read, update, delete properties)
     -   [ ] Investment tracking and management
--   [ ] Implement robust error handling and logging
--   [ ] Ensure proper data validation and sanitization
--   [ ] Integrate API with Solana blockchain for transaction processing
+-   [x] Implement robust error handling and logging
+-   [x] Ensure proper data validation and sanitization
+-   [x] Integrate API with Solana blockchain for transaction processing
 
 #### **Database (Supabase)**
 
--   [ ] Design an efficient schema for storing:
-    -   [ ] User profiles
-    -   [ ] Property details (e.g., property name, price, tokens available)
+-   [x] Design an efficient schema for storing:
+    -   [x] User profiles
+    -   [x] Property details (e.g., property name, price, tokens available)
     -   [ ] Investment records (tracking user investments)
 
 #### **Frontend (Next.js + Tailwind CSS)**
@@ -48,11 +57,11 @@ Crowd-Estate is a blockchain-based crowdfunding platform for real estate project
     -   [x] **Property Listing Page** displaying all properties
     -   [x] **Property Detail Page** with investment options
     -   [x] **User Dashboard** to track investments and returns
--   [ ] Implement proper state management using React Context or Redux
+-   [x] Implement proper state management using React Context
 
 ---
 
-### Bonus Features
+### **Bonus Features**
 
 #### **Blockchain**
 
@@ -61,44 +70,38 @@ Crowd-Estate is a blockchain-based crowdfunding platform for real estate project
     -   [x] Governance and voting system
 -   [x] Ensure proper access control and security measures in smart contracts
 
-<!-- #### **Backend**
+#### **Backend**
 
 -   [ ] Develop API endpoints for:
-    -   [ ] Governance proposal creation and voting
--   [ ] Implement caching mechanisms for improved performance -->
+    -   [ ] Creation and voting of governance proposals
+-   [ ] Implement caching mechanisms to improve performance
 
-<!-- #### **Database**
+#### **Database**
 
 -   [ ] Design schema for storing governance proposals and votes
--   [ ] Implement proper indexing for optimized query performance
--   [ ] Utilize Supabase's real-time features for live updates where appropriate -->
+-   [ ] Implement proper indexing to optimize query performance
+-   [ ] Utilize Supabase's real-time features for live updates where appropriate
 
-<!-- #### **Frontend**
+#### **Frontend**
 
 -   [ ] Implement additional pages/components:
     -   [ ] Property listing page with search and filter functionality
     -   [ ] Governance page for viewing and voting on proposals
-    -   [ ] Admin panel for property and user management -->
+    -   [ ] Admin panel for property and user management
 
 ---
 
-### Additional Features
+### **Additional Features**
 
 -   [ ] Implement a secondary market for trading property tokens
-<!-- -   [ ] Add real-time notifications for investment updates and governance activities
+-   [ ] Add real-time notifications for investment updates and governance activities
 -   [ ] Integrate with external APIs for property valuation data
 -   [ ] Implement multi-language support for a global audience
--   [ ] Add comprehensive analytics and reporting features -->
+-   [ ] Add comprehensive analytics and reporting features
 
 ---
 
-### Evaluation Criteria
-
-<!-- #### **Code Quality and Organization**
-
--   [ ] Clean, well-documented, and maintainable code
--   [ ] Proper use of design patterns and best practices
--   [ ] Effective error handling and logging -->
+### **Evaluation Criteria**
 
 #### **Blockchain Implementation**
 
@@ -106,76 +109,58 @@ Crowd-Estate is a blockchain-based crowdfunding platform for real estate project
 -   [x] Efficient use of Solana's features, including PDAs and account management
 -   [x] Security considerations and access control in smart contract development
 
-<!-- #### **Backend Architecture**
-
--   [ ] RESTful API design with efficient database queries
--   [ ] Proper integration with blockchain and frontend
--   [ ] Secure and scalable architecture
-
-#### **Frontend Implementation**
-
--   [ ] Functional and responsive user interface
--   [ ] Seamless interaction with backend and blockchain services
-
-#### **Documentation and Deployment**
-
--   [x] Clear README with setup instructions
--   [ ] API documentation and deployment instructions (or live demo) -->
-
-<!-- ---
-
-### Bonus Criteria
-
-#### **Frontend Presentation and User Experience**
-
--   [ ] Intuitive and responsive user interface with clean design
--   [ ] Smooth animations and transitions for improved user experience
-
-#### **Performance and Scalability**
-
--   [ ] Efficient data loading and state management
--   [ ] Use of caching mechanisms to improve performance
-
-#### **Security Measures**
-
--   [ ] Secure user authentication and authorization
--   [ ] Data encryption and protection against vulnerabilities
-
-#### **Innovation and Creativity**
-
--   [ ] Unique features or approaches to problem-solving
--   [ ] Thoughtful UX/UI decisions -->
-
 ---
+
+### **License**
+
+This project is licensed under the MIT License.
 
 ## Installation
 
-### Prerequisites
+### **Prerequisites**
 
+-   [Node.js](https://nodejs.org/) (version 14 or higher)
+-   [yarn](https://yarnpkg.com/)
 -   [Rust](https://www.rust-lang.org/)
 -   [Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools)
 -   [Anchor](https://www.anchor-lang.com/docs/installation)
 
-### Clone the Repository
+### **Clone the Repository**
 
 ```bash
 git clone https://github.com/marcelofeitoza/crowd-estate.git
 cd crowd-estate
 ```
 
-### Build the Program
+### **Install Dependencies**
+
+#### **Backend**
+
+```bash
+cd app/server
+yarn install
+```
+
+#### **Frontend**
+
+```bash
+cd app/client
+yarn install
+```
+
+### **Build the Program**
 
 ```bash
 anchor build
 ```
 
-### Test the Program
+### **Test the Program**
 
 ```bash
 anchor test
 ```
 
-### Deploy the Program
+### **Deploy the Program**
 
 To deploy the program to a Solana cluster (e.g., Devnet), run:
 
@@ -184,7 +169,37 @@ solana config set --url devnet
 anchor deploy
 ```
 
+### **Start the Backend Server**
 
-## License
+```bash
+cd app/server
+yarn start
+```
 
-This project is licensed under the MIT License.
+### **Start the Frontend Server**
+
+```bash
+cd app/client
+yarn start
+```
+
+## Usage
+
+1. **Register / Login:**
+    - Access the registration page to create a new account or log in if you already have one.
+2. **Connect Solana Wallet:**
+    - Use a compatible wallet (such as Phantom) to connect to the platform.
+3. **Invest in Properties:**
+    - Browse available properties and invest in fractions using USDC.
+4. **Manage Investments:**
+    - Access the user dashboard to track your investments, claim dividends, and participate in governance.
+5. **Participate in Governance:**
+    - Create and vote on proposals to influence platform decisions.
+
+## Tests
+
+To run the project's tests, navigate to the backend directory and execute:
+
+```bash
+anchor test
+```
