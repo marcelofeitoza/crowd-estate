@@ -4,6 +4,7 @@ import "./globals.css";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import AppWalletProvider from "@/components/AppWalletProvider";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/components/AuthContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -32,7 +33,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AppWalletProvider>{children}</AppWalletProvider>
+        <AppWalletProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </AppWalletProvider>
         <Toaster />
       </body>
     </html>

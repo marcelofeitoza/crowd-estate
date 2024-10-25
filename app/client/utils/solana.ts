@@ -21,12 +21,9 @@ const ADM = Uint8Array.from(JSON.parse(PRIVATE_KEY));
 const admKeypair = anchor.web3.Keypair.fromSecretKey(ADM);
 console.log("ADM Keypair: ", admKeypair.publicKey.toString());
 
-export const network = WalletAdapterNetwork.Devnet; // "http://localhost:8899";
-export const endpoint =
-  // "http://localhost:8899"
-  "https://api.devnet.solana.com";
+export const network = WalletAdapterNetwork.Devnet;
+export const endpoint = "https://api.devnet.solana.com";
 export const USDC_MINT = new PublicKey(
-  // "dVHYHTEVz7FW7QctiJJsfYQSSmKS3VVTHVpejHseZom" // "http://localhost:8899"
   "5AvgBHv4sAxF2K8AHYV3jZrkqWiDsqq5TGmRqX2S2xQH", // "https://api.devnet.solana.com"
 );
 

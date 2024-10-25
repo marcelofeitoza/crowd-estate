@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/crowd_estate.json`.
  */
 export type CrowdEstate = {
-  "address": "3KZxuntyyT436Fvwsxv9Gf2N2mDrqA3Y3oohRViZErtj",
+  "address": "BCm7jbeWNb2eu4DghTSbaZW5nASyk69bQ4ozqTd6XExi",
   "metadata": {
     "name": "crowdEstate",
     "version": "0.1.0",

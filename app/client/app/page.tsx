@@ -1,19 +1,21 @@
 "use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { useEffect, useState } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useAuth } from "@/components/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 export default function Home() {
-  const [logged, setLogged] = useState(false);
-  const wallet = useWallet();
+  const { isAuthenticated, user, logout } = useAuth();
 
-  useEffect(() => {
-    if (wallet.publicKey) {
-      setLogged(true);
-    }
-  }, [wallet.publicKey]);
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logout",
+      description: "Logout bem-sucedido!",
+      variant: "default",
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
@@ -28,28 +30,39 @@ export default function Home() {
           Our platform allows you to invest in real estate properties by
           purchasing tokens that represent ownership of the property.
         </p>
-        <p className="text-lg mb-6">
+        <p className="text-lg mb-8">
           You can also earn passive income by staking your tokens and receiving
           dividends from the property&apos;s revenue.
         </p>
-        <p className="text-lg mb-8">
-          Get started by connecting your Solana wallet and exploring the
-          available properties.
-        </p>
-        <div className="flex justify-center space-x-4">
-          {!logged ? (
-            <WalletMultiButton />
-          ) : (
-            <>
-              <Button asChild>
-                <Link href="/invest">Invest in Properties</Link>
+        {!isAuthenticated ? (
+          <Button asChild className="mb-8">
+            <Link href="/login">Login</Link>
+          </Button>
+        ) : (
+          <>
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">Welcome, {user.name}!</h2>
+              <p className="text-lg mb-6">
+                Your wallet address is: {user.publicKey}
+              </p>
+
+              <Button onClick={handleLogout} variant="destructive">
+                Logout
               </Button>
-              <Button asChild variant="secondary">
-                <Link href="/admin">Create a Property</Link>
-              </Button>
-            </>
-          )}
-        </div>
+            </div>
+            <div className="flex justify-center space-x-4">
+              {user.role === "landlord" ? (
+                <Button asChild variant="secondary" className="text-lg">
+                  <Link href="/landlord">Manage Properties</Link>
+                </Button>
+              ) : (
+                <Button asChild className="text-lg">
+                  <Link href="/invest">Invest in Properties</Link>
+                </Button>
+              )}
+            </div>
+          </>
+        )}
       </main>
     </div>
   );

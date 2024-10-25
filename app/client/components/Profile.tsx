@@ -1,37 +1,26 @@
-import { Investment, Property } from "@/utils/solana";
-import { WalletContextState } from "@solana/wallet-adapter-react";
-import {
-	DollarSign,
-	PieChart,
-	TrendingUp,
-	Building,
-	Users,
-} from "lucide-react";
+import { ellipsify, Investment, Property } from "@/utils/solana";
+import { DollarSign, PieChart, TrendingUp, Building } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User } from "./AuthContext";
 
 interface ProfileProps {
-	wallet: WalletContextState;
+	user: User;
 	totalInvested?: number;
 	totalReturns?: number;
 	investments?: Investment[];
 	properties?: Property[];
-	type: "investor" | "admin";
+	type: "investor" | "landlord";
 }
 
 export const Profile = ({
-	wallet,
+	user,
 	totalInvested = 0,
 	totalReturns = 0,
 	investments = [],
 	properties = [],
 	type,
 }: ProfileProps) => {
-	const totalInvestors = properties.reduce(
-		(acc, property) =>
-			acc + (property.total_tokens - property.available_tokens),
-		0
-	);
 	const totalValueManaged = properties.reduce(
 		(acc, property) =>
 			acc + property.total_tokens * property.token_price_usdc,
@@ -47,25 +36,25 @@ export const Profile = ({
 				<div className="flex items-center space-x-4 mb-4">
 					<Avatar>
 						<AvatarImage
-							src={`https://robohash.org/${wallet.publicKey?.toBase58()}`}
+							src={`https://robohash.org/${user.publicKey}`}
 						/>
 						<AvatarFallback className="bg-primary-foreground">
-							{wallet.publicKey?.toBase58().slice(0, 2)}
+							{user.publicKey?.slice(0, 5)}
 						</AvatarFallback>
 					</Avatar>
 					<div>
-						<p className="font-medium">
-							{wallet.publicKey
-								? wallet.publicKey.toBase58().slice(0, 8) +
-									"..."
-								: "Not connected"}
+						<p className="text-lg font-semibold">{user.name} </p>
+						<p className="text-sm text-muted-foreground capitalize text-zinc-600">
+							{user.publicKey}
 						</p>
-						<p className="text-sm text-muted-foreground capitalize">
+						<p className="text-sm text-muted-foreground capitalize text-zinc-600">
 							{type}
 						</p>
 					</div>
 				</div>
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div
+					className={`grid grid-cols-1 ${type == "investor" ? "md:grid-cols-3" : "md:grid-cols-2"} gap-4`}
+				>
 					{type === "investor" ? (
 						<>
 							<Card>
@@ -76,7 +65,14 @@ export const Profile = ({
 											Total Invested
 										</p>
 										<p className="text-lg">
-											${totalInvested.toFixed(2)}
+											$
+											{totalInvested.toLocaleString(
+												undefined,
+												{
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												}
+											)}
 										</p>
 									</div>
 								</CardContent>
@@ -89,7 +85,14 @@ export const Profile = ({
 											Total Returns
 										</p>
 										<p className="text-lg">
-											${totalReturns.toFixed(2)}
+											$
+											{totalReturns.toLocaleString(
+												undefined,
+												{
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												}
+											)}
 										</p>
 									</div>
 								</CardContent>
@@ -123,19 +126,7 @@ export const Profile = ({
 									</div>
 								</CardContent>
 							</Card>
-							<Card>
-								<CardContent className="flex items-center p-4">
-									<Users className="w-4 h-4 mr-2 text-muted-foreground" />
-									<div>
-										<p className="text-sm font-medium">
-											Total Investors
-										</p>
-										<p className="text-lg">
-											{totalInvestors}
-										</p>
-									</div>
-								</CardContent>
-							</Card>
+
 							<Card>
 								<CardContent className="flex items-center p-4">
 									<DollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
@@ -144,7 +135,14 @@ export const Profile = ({
 											Total Value Managed
 										</p>
 										<p className="text-lg">
-											${totalValueManaged.toFixed(2)}
+											${" "}
+											{totalValueManaged.toLocaleString(
+												undefined,
+												{
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												}
+											)}
 										</p>
 									</div>
 								</CardContent>
