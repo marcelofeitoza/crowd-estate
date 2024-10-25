@@ -157,6 +157,7 @@ describe("RWA Platform", async () => {
 			tokenProgram: TOKEN_PROGRAM_ID,
 			associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
 		};
+		console.log(accounts);
 
 		await program.methods
 			.createProperty(

@@ -1,18 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
+import http from "http";
 import dotenv from "dotenv";
-import { registerUser, loginUser, updateProfile } from "../services/user";
-import {
-	createProperty,
-	investInProperty,
-	getInvestments,
-} from "../services/property";
+import { handleLogin } from "./user/login";
+import { handleRegister } from "./register";
+import { handleCreateProperty } from "./program/createProperty";
 
 dotenv.config();
-
-export const supabase = createClient(
-	process.env.SUPABASE_URL!,
-	process.env.SUPABASE_KEY!
-);
 
 interface JsonRpcRequest {
 	jsonrpc: string;
@@ -21,7 +13,19 @@ interface JsonRpcRequest {
 	id: number | string | null;
 }
 
-export const handleJsonRpcRequest = async (body: string) => {
+interface JsonRpcResponse {
+	jsonrpc: string;
+	result?: any;
+	error?: {
+		code: number;
+		message: string;
+	};
+	id: number | string | null;
+}
+
+export const handleJsonRpcRequest = async (
+	body: string
+): Promise<JsonRpcResponse> => {
 	const { jsonrpc, method, params, id }: JsonRpcRequest = JSON.parse(body);
 
 	console.log("Method: ", method);
@@ -30,36 +34,8 @@ export const handleJsonRpcRequest = async (body: string) => {
 	try {
 		let result;
 		switch (method) {
-			case "registerUser":
-				result = await registerUser({
-					name: params.name,
-					email: params.email,
-				});
-				break;
-			case "createProperty":
-				result = await createProperty({
-					name: params.name,
-					totalTokens: params.totalTokens,
-					pricePerToken: params.pricePerToken,
-					symbol: params.symbol,
-					location: params.location,
-					creator: params.creatorPubkey,
-				});
-				break;
-			case "investInProperty":
-				result = await investInProperty({
-					propertyPubkey: params.propertyPubkey,
-					investorPubkey: params.investorPubkey,
-					usdcAmount: params.usdcAmount,
-				});
-				break;
-			case "getInvestments":
-				result = await getInvestments({
-					userPubkey: params.userPubkey,
-				});
-				break;
 			default:
-				throw new Error("Method not found");
+				throw { code: -32601, message: "Method not found" };
 		}
 
 		return {
@@ -71,10 +47,126 @@ export const handleJsonRpcRequest = async (body: string) => {
 		return {
 			jsonrpc,
 			error: {
-				code: error.code || -32602,
+				code: error.code || -32603,
 				message: error.message || "Internal error",
 			},
 			id,
 		};
+	}
+};
+
+export const handleRestRequest = async (
+	req: http.IncomingMessage,
+	res: http.ServerResponse
+) => {
+	if (!req.url || !req.method) {
+		res.writeHead(400, { "Content-Type": "application/json" });
+		res.end(JSON.stringify({ error: "Bad Request" }));
+		return;
+	}
+
+	const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+	const pathname = parsedUrl.pathname;
+
+	switch (req.method) {
+		case "GET":
+		case "/health":
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ status: "ok" }));
+			break;
+		case "POST":
+			// User
+			switch (pathname) {
+				case "/login":
+					let loginBody = "";
+					req.on("data", (chunk) => {
+						loginBody += chunk.toString();
+					});
+					req.on("end", async () => {
+						try {
+							const parsedBody = JSON.parse(loginBody);
+							const response = await handleLogin(parsedBody);
+							res.writeHead(200, {
+								"Content-Type": "application/json",
+							});
+							res.end(JSON.stringify(response));
+						} catch (error: any) {
+							res.writeHead(error.code || 500, {
+								"Content-Type": "application/json",
+							});
+							res.end(
+								JSON.stringify({
+									error:
+										error.message ||
+										"Internal Server Error",
+								})
+							);
+						}
+					});
+					break;
+				case "/register":
+					let registerBody = "";
+					req.on("data", (chunk) => {
+						registerBody += chunk.toString();
+					});
+					req.on("end", async () => {
+						try {
+							const parsedBody = JSON.parse(registerBody);
+							const response = await handleRegister(parsedBody);
+							res.writeHead(201, {
+								"Content-Type": "application/json",
+							});
+							res.end(JSON.stringify(response));
+						} catch (error: any) {
+							res.writeHead(error.code || 500, {
+								"Content-Type": "application/json",
+							});
+							res.end(
+								JSON.stringify({
+									error:
+										error.message ||
+										"Internal Server Error",
+								})
+							);
+						}
+					});
+					break;
+
+				// Program
+				case "/create-property":
+					let createPropertyBody = "";
+					req.on("data", (chunk) => {
+						createPropertyBody += chunk.toString();
+					});
+					req.on("end", async () => {
+						try {
+							const parsedBody = JSON.parse(createPropertyBody);
+							const response = await handleCreateProperty(
+								parsedBody
+							);
+							res.writeHead(201, {
+								"Content-Type": "application/json",
+							});
+							res.end(JSON.stringify(response));
+						} catch (error: any) {
+							res.writeHead(error.code || 500, {
+								"Content-Type": "application/json",
+							});
+							res.end(
+								JSON.stringify({
+									error:
+										error.message ||
+										"Internal Server Error",
+								})
+							);
+						}
+					});
+					break;
+			}
+			break;
+		default:
+			res.writeHead(405, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ error: "Method Not Allowed" }));
+			break;
 	}
 };

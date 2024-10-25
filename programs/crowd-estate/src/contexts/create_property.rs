@@ -22,8 +22,7 @@ pub struct CreateProperty<'info> {
     pub property: Account<'info, Property>,
 
     #[account(
-        init_if_needed,
-        payer = admin,
+        mut,
         mint::decimals = 0,
         mint::authority = property,
         mint::token_program = token_program
