@@ -1,9 +1,23 @@
+import { z } from "zod";
 import { User } from "../../models/User";
 import redisClient from "../../services/redis";
 import { supabase } from "../../services/supabase";
 
+const createHandleLoginSchema = z.object({
+	publicKey: z.string().nonempty(),
+});
+
 export const handleLogin = async (body: any) => {
-	const { publicKey } = body;
+	const parseResult = createHandleLoginSchema.safeParse(body);
+
+	if (!parseResult.success) {
+		throw {
+			code: 400,
+			message: "Invalid input parameters",
+		};
+	}
+
+	const { publicKey } = parseResult.data;
 
 	if (!publicKey) {
 		throw { code: 400, message: "Missing publicKey parameter" };
@@ -36,7 +50,7 @@ export const handleLogin = async (body: any) => {
 
 			await redisClient.setEx(
 				`user:${publicKey}`,
-				900,
+				60,
 				JSON.stringify(user)
 			);
 

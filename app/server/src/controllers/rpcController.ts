@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import { handleLogin } from "./user/login";
 import { handleCreateProperty } from "./program/createProperty";
 import { handleRegister } from "./user/register";
+import { handleListProperties } from "./program/listProperties";
+import { handleListInvestments } from "./program/listInvestments";
 
 dotenv.config();
 
@@ -23,37 +25,22 @@ interface JsonRpcResponse {
 	id: number | string | null;
 }
 
-export const handleJsonRpcRequest = async (
-	body: string
-): Promise<JsonRpcResponse> => {
-	const { jsonrpc, method, params, id }: JsonRpcRequest = JSON.parse(body);
-
-	console.log("Method: ", method);
-	console.log("Params: ", params);
-
-	try {
-		let result;
-		switch (method) {
-			default:
-				throw { code: -32601, message: "Method not found" };
-		}
-
-		return {
-			jsonrpc,
-			result,
-			id,
-		};
-	} catch (error: any) {
-		return {
-			jsonrpc,
-			error: {
-				code: error.code || -32603,
-				message: error.message || "Internal error",
-			},
-			id,
-		};
-	}
-};
+async function getRequestBody(req: http.IncomingMessage): Promise<any> {
+	return new Promise((resolve, reject) => {
+		let body = "";
+		req.on("data", (chunk) => {
+			body += chunk.toString();
+		});
+		req.on("end", () => {
+			try {
+				const parsedBody = JSON.parse(body || "{}");
+				resolve(parsedBody);
+			} catch (error) {
+				reject(error);
+			}
+		});
+	});
+}
 
 export const handleRestRequest = async (
 	req: http.IncomingMessage,
@@ -70,22 +57,52 @@ export const handleRestRequest = async (
 
 	switch (req.method) {
 		case "GET":
-		case "/health":
-			res.writeHead(200, { "Content-Type": "application/json" });
-			res.end(JSON.stringify({ status: "ok" }));
+			switch (pathname) {
+				case "/health":
+					res.writeHead(200, { "Content-Type": "application/json" });
+					res.end(JSON.stringify({ status: "ok" }));
+					break;
+				default:
+					res.writeHead(404, { "Content-Type": "application/json" });
+					res.end(JSON.stringify({ error: "Not Found" }));
+					break;
+			}
 			break;
 		case "POST":
-			// User
-			switch (pathname) {
-				case "/login":
-					let loginBody = "";
-					req.on("data", (chunk) => {
-						loginBody += chunk.toString();
-					});
-					req.on("end", async () => {
+			try {
+				const requestBody = await getRequestBody(req);
+				switch (pathname) {
+					case "/login":
+						const loginResponse = await handleLogin(requestBody);
+						res.writeHead(200, {
+							"Content-Type": "application/json",
+						});
+						res.end(JSON.stringify(loginResponse));
+						break;
+					case "/register":
+						const registerResponse = await handleRegister(
+							requestBody
+						);
+						res.writeHead(201, {
+							"Content-Type": "application/json",
+						});
+						res.end(JSON.stringify(registerResponse));
+						break;
+					case "/create-property":
+						const createPropertyResponse =
+							await handleCreateProperty(requestBody);
+						res.writeHead(201, {
+							"Content-Type": "application/json",
+						});
+						res.end(JSON.stringify(createPropertyResponse));
+						break;
+					case "/list-properties":
+						console.log("List properties");
 						try {
-							const parsedBody = JSON.parse(loginBody);
-							const response = await handleLogin(parsedBody);
+							const requestBody = await getRequestBody(req);
+							const response = await handleListProperties(
+								requestBody
+							);
 							res.writeHead(200, {
 								"Content-Type": "application/json",
 							});
@@ -102,21 +119,16 @@ export const handleRestRequest = async (
 								})
 							);
 						}
-					});
-					break;
-				case "/register":
-					let registerBody = "";
-					req.on("data", (chunk) => {
-						registerBody += chunk.toString();
-					});
-					req.on("end", async () => {
+						break;
+					case "/list-investments":
+						console.log("List investments");
 						try {
-							const parsedBody = JSON.parse(registerBody);
-							const response = await handleRegister(parsedBody);
-							res.writeHead(201, {
+							const investmentsResponse =
+								await handleListInvestments(requestBody);
+							res.writeHead(200, {
 								"Content-Type": "application/json",
 							});
-							res.end(JSON.stringify(response));
+							res.end(JSON.stringify(investmentsResponse));
 						} catch (error: any) {
 							res.writeHead(error.code || 500, {
 								"Content-Type": "application/json",
@@ -129,39 +141,23 @@ export const handleRestRequest = async (
 								})
 							);
 						}
-					});
-					break;
-
-				// Program
-				case "/create-property":
-					let createPropertyBody = "";
-					req.on("data", (chunk) => {
-						createPropertyBody += chunk.toString();
-					});
-					req.on("end", async () => {
-						try {
-							const parsedBody = JSON.parse(createPropertyBody);
-							const response = await handleCreateProperty(
-								parsedBody
-							);
-							res.writeHead(201, {
-								"Content-Type": "application/json",
-							});
-							res.end(JSON.stringify(response));
-						} catch (error: any) {
-							res.writeHead(error.code || 500, {
-								"Content-Type": "application/json",
-							});
-							res.end(
-								JSON.stringify({
-									error:
-										error.message ||
-										"Internal Server Error",
-								})
-							);
-						}
-					});
-					break;
+						break;
+					default:
+						res.writeHead(404, {
+							"Content-Type": "application/json",
+						});
+						res.end(JSON.stringify({ error: "Not Found" }));
+						break;
+				}
+			} catch (error: any) {
+				res.writeHead(error.code || 500, {
+					"Content-Type": "application/json",
+				});
+				res.end(
+					JSON.stringify({
+						error: error.message || "Internal Server Error",
+					})
+				);
 			}
 			break;
 		default:

@@ -1,11 +1,20 @@
+import { z } from "zod";
 import { Role } from "../../models/User";
 import redisClient from "../../services/redis";
 import { supabase } from "../../services/supabase";
 
-export const handleRegister = async (body: any) => {
-	const { publicKey, name, role } = body;
+const createHandleRegisterSchema = z.object({
+	publicKey: z.string().min(32),
+	name: z.string().min(1),
+	role: z.enum([Role.Investor, Role.Landlord]),
+});
 
-	if (!publicKey || !name) {
+export const handleRegister = async (body: any) => {
+	const {
+		data: { publicKey, name, role },
+	} = createHandleRegisterSchema.safeParse(body);
+
+	if (!publicKey || !name || !role) {
 		throw { code: 400, message: "Missing parameters" };
 	}
 
