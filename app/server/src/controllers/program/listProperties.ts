@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Property } from "../../models/Property";
 import { getProperties } from "../../services/crowd-estate";
-import { redis } from "../../services/redis";
+import { redis, RedisKeys } from "../../services/redis";
 import { supabase } from "../../services/supabase";
 
 export enum Filters {
@@ -12,8 +12,8 @@ export enum Filters {
 }
 
 const handleListPropertiesSchema = z.object({
-	filters: z.array(z.nativeEnum(Filters)),
-	userPublicKey: z.string().min(32),
+	filters: z.array(z.nativeEnum(Filters)).optional(),
+	userPublicKey: z.string().min(32).optional(),
 	forceRefresh: z.boolean().optional(),
 });
 
@@ -24,6 +24,16 @@ export const updateSupabaseWithProperties = async (
 		const propertiesDatabase = properties.map((property) => ({
 			property_pda: property.publicKey,
 			creator_public_key: property.admin,
+			property_name: property.property_name,
+			total_tokens: property.total_tokens,
+			available_tokens: property.available_tokens,
+			token_price_usdc: property.token_price_usdc,
+			token_symbol: property.token_symbol,
+			admin: property.admin,
+			mint: property.mint,
+			bump: property.bump,
+			dividends_total: property.dividends_total,
+			is_closed: property.is_closed,
 		}));
 
 		const { error } = await supabase
@@ -39,12 +49,15 @@ export const updateSupabaseWithProperties = async (
 				message: "Failed to update properties in database",
 			};
 		}
-		await redis.set("properties", JSON.stringify(properties));
+		await redis.set(RedisKeys.Properties, properties);
 
 		console.log("Supabase properties updated successfully");
-	} catch (error) {
+	} catch (error: any) {
 		console.error("Error updating Supabase:", error);
-		throw error;
+		throw {
+			code: 500,
+			message: "Failed to update properties in database",
+		};
 	}
 };
 
@@ -57,7 +70,11 @@ export const handleListProperties = async (
 		throw { code: 400, message: "Invalid input parameters" };
 	}
 
-	const { filters, userPublicKey, forceRefresh } = parseResult.data;
+	const {
+		filters = [Filters.ALL],
+		userPublicKey,
+		forceRefresh,
+	} = parseResult.data;
 
 	try {
 		const properties = await getProperties(

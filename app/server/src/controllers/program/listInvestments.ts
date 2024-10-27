@@ -7,7 +7,7 @@ import {
 import { PublicKey } from "@solana/web3.js";
 import { z } from "zod";
 import { Investment } from "../../models/Investment";
-import { redis, RedisKeys } from "../../services/redis";
+import { redis, RedisKeys, RedisKeyTemplates } from "../../services/redis";
 import { supabase } from "../../services/supabase";
 import { Property } from "../../models/Property";
 
@@ -44,9 +44,12 @@ export const updateSupabaseWithInvestments = async (
 		}
 
 		console.log("Supabase investments updated successfully");
-	} catch (error) {
+	} catch (error: any) {
 		console.error("Error updating Supabase:", error);
-		throw error;
+		throw {
+			code: 500,
+			message: "Failed to update investments in database",
+		};
 	}
 };
 
@@ -58,11 +61,11 @@ export const handleListInvestments = async (body: any) => {
 	const { publicKey, forceRefresh } = parseResult.data;
 
 	try {
-		const cacheKey = `investmentsData:${publicKey}`;
+		const cacheKey = RedisKeyTemplates.investmentsDataByInvestor(publicKey);
 		const cachedResult = await redis.get(cacheKey);
 		if (cachedResult) {
 			console.log("Returning investments data from cache");
-			return JSON.parse(cachedResult);
+			return cachedResult;
 		}
 
 		const investmentsData = await getInvestmentsByInvestor(publicKey);
@@ -70,7 +73,7 @@ export const handleListInvestments = async (body: any) => {
 		let properties: Property[];
 		const cachedProperties = await redis.get(RedisKeys.PropertiesAll);
 		if (cachedProperties) {
-			properties = JSON.parse(cachedProperties);
+			properties = cachedProperties;
 		} else {
 			properties = await getProperties(
 				undefined,
@@ -97,7 +100,7 @@ export const handleListInvestments = async (body: any) => {
 		});
 
 		const result = { investmentsData, invested, returns };
-		await redis.set(cacheKey, JSON.stringify(result));
+		await redis.set(cacheKey, result);
 
 		return result;
 	} catch (error) {

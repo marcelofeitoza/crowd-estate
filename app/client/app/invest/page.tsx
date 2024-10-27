@@ -125,11 +125,17 @@ export default function Invest() {
 
 				<Tabs defaultValue="properties" className="mb-6">
 					<TabsList className="mb-8">
-						<TabsTrigger value="properties">
+						<TabsTrigger
+							value="properties"
+							onClick={() => fetchProperties(true)}
+						>
 							<Building className="w-4 h-4 mr-2" />
 							Properties
 						</TabsTrigger>
-						<TabsTrigger value="investments">
+						<TabsTrigger
+							value="investments"
+							onClick={() => fetchInvestments(true)}
+						>
 							<Wallet className="w-4 h-4 mr-2" />
 							Your Investments
 						</TabsTrigger>
@@ -177,7 +183,7 @@ export default function Invest() {
 								Your Investments{" "}
 								<Button
 									variant="ghost"
-									onClick={() => fetchInvestments()}
+									onClick={() => fetchInvestments(true)}
 								>
 									<RefreshCwIcon />
 								</Button>

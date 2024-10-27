@@ -11,7 +11,7 @@ export const useAnchor = () => {
 	const provider = useMemo(() => {
 		if (!wallet) return null;
 		return new anchor.AnchorProvider(connection, wallet, {
-			preflightCommitment: "processed",
+			preflightCommitment: "confirmed",
 		});
 	}, [connection, wallet]);
 

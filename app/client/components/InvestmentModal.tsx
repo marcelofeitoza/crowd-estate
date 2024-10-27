@@ -1,32 +1,33 @@
 "use client";
 
-import {
-	Dialog,
-	DialogTrigger,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
-import { mintUsdc, Property, USDC_MINT } from "@/utils/solana";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { SendTransactionError, Transaction } from "@solana/web3.js";
-import { toast } from "@/hooks/use-toast";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { Progress } from "./ui/progress";
-import { Separator } from "./ui/separator";
-import { AlertCircle, Coins, DollarSign, PieChart } from "lucide-react";
 import {
 	createAssociatedTokenAccountInstruction,
 	getAssociatedTokenAddress,
 } from "@solana/spl-token";
 import { useAnchor } from "@/hooks/use-anchor";
+import { toast } from "@/hooks/use-toast";
+import { mintUsdc, Property, USDC_MINT } from "@/utils/solana";
 import { investInPropertyTransaction } from "@/services/program";
 import { checkUsdcAccount } from "@/services/usdc";
 import { fetchInvestmentPDA } from "@/services/data";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { AlertCircle, Coins, DollarSign, PieChart } from "lucide-react";
 
 interface InvestModalProps {
 	property: Property;
@@ -47,6 +48,7 @@ export const InvestModal = ({
 	const [walletUsdcBalance, setWalletUsdcBalance] = useState<number>(0);
 	const [existingInvestment, setExistingInvestment] =
 		useState<boolean>(false);
+	const [isMinting, setIsMinting] = useState<boolean>(false);
 	const maxInvestmentUSDC =
 		property.available_tokens * property.token_price_usdc;
 	const tokenPriceUSDC = property.token_price_usdc;
@@ -77,7 +79,6 @@ export const InvestModal = ({
 						wallet.publicKey.toString(),
 						property.publicKey
 					);
-
 					setExistingInvestment(exists);
 				}
 			} catch (error) {
@@ -105,6 +106,15 @@ export const InvestModal = ({
 		const newUsdcAmount = newTokenAmount * tokenPriceUSDC;
 		setTokenAmount(newTokenAmount);
 		setUsdcAmount(newUsdcAmount);
+	};
+
+	const handlePresetAmount = (percentage: number) => {
+		const maxInvestment = Math.min(maxInvestmentUSDC, walletUsdcBalance);
+		const newUsdcAmount =
+			Math.floor((maxInvestment * percentage) / tokenPriceUSDC) *
+			tokenPriceUSDC;
+		setUsdcAmount(newUsdcAmount);
+		setTokenAmount(newUsdcAmount / tokenPriceUSDC);
 	};
 
 	const handleInvest = async (e: React.FormEvent) => {
@@ -254,8 +264,6 @@ export const InvestModal = ({
 		}
 	};
 
-	const [isMinting, setIsMinting] = useState<boolean>(false);
-
 	const handleMintUsdc = async () => {
 		try {
 			setIsMinting(true);
@@ -342,46 +350,52 @@ export const InvestModal = ({
 					<Separator />
 
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-						<div className="flex items-center space-x-2">
-							<DollarSign className="w-5 h-5 text-muted-foreground" />
-							<div>
-								<p className="text-sm font-medium">
-									Token Price
-								</p>
-								<p className="text-md font-semibold">
-									${" "}
-									{property.token_price_usdc.toLocaleString(
-										undefined,
-										{
-											minimumFractionDigits: 2,
-											maximumFractionDigits: 2,
-										}
-									)}
-								</p>
-							</div>
-						</div>
-						<div className="flex items-center space-x-2">
-							<Coins className="w-5 h-5 text-muted-foreground" />
-							<div>
-								<p className="text-sm font-medium">
-									Token Symbol
-								</p>
-								<p className="text-lg font-semibold">
-									{property.token_symbol}
-								</p>
-							</div>
-						</div>
-						<div className="flex items-center space-x-2">
-							<PieChart className="w-5 h-5 text-muted-foreground" />
-							<div>
-								<p className="text-sm font-medium">
-									Total Dividends
-								</p>
-								<p className="text-lg font-semibold">
-									${property.dividends_total.toFixed(2)}
-								</p>
-							</div>
-						</div>
+						<Card>
+							<CardContent className="flex items-center p-4">
+								<DollarSign className="w-5 h-5 text-primary mr-2" />
+								<div>
+									<p className="text-sm font-medium text-muted-foreground">
+										Token Price
+									</p>
+									<p className="text-lg font-semibold">
+										${" "}
+										{property.token_price_usdc.toLocaleString(
+											undefined,
+											{
+												minimumFractionDigits: 2,
+												maximumFractionDigits: 2,
+											}
+										)}
+									</p>
+								</div>
+							</CardContent>
+						</Card>
+						<Card>
+							<CardContent className="flex items-center p-4">
+								<Coins className="w-5 h-5 text-primary mr-2" />
+								<div>
+									<p className="text-sm font-medium text-muted-foreground">
+										Token Symbol
+									</p>
+									<p className="text-lg font-semibold">
+										{property.token_symbol}
+									</p>
+								</div>
+							</CardContent>
+						</Card>
+						<Card>
+							<CardContent className="flex items-center p-4">
+								<PieChart className="w-5 h-5 text-primary mr-2" />
+								<div>
+									<p className="text-sm font-medium text-muted-foreground">
+										Total Dividends
+									</p>
+									<p className="text-lg font-semibold">
+										${property.dividends_total.toFixed(2)}
+									</p>
+								</div>
+							</CardContent>
+						</Card>
 					</div>
 				</div>
 
@@ -456,6 +470,36 @@ export const InvestModal = ({
 									className="mt-1"
 								/>
 							</div>
+							<div className="flex flex-wrap gap-2">
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => handlePresetAmount(0.25)}
+								>
+									25%
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => handlePresetAmount(0.5)}
+								>
+									50%
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => handlePresetAmount(0.75)}
+								>
+									75%
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => handlePresetAmount(1)}
+								>
+									Max
+								</Button>
+							</div>
 						</div>
 
 						<div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
@@ -470,10 +514,9 @@ export const InvestModal = ({
 								variant="outline"
 								onClick={handleMintUsdc}
 								disabled={isMinting}
+								className="space-x-2"
 							>
-								{isMinting ? (
-									<LoadingSpinner margin={2} />
-								) : null}
+								{isMinting ? <LoadingSpinner /> : null}
 								{isMinting ? "Minting..." : "Mint 10,000 USDC"}
 							</Button>
 						</div>
@@ -481,11 +524,9 @@ export const InvestModal = ({
 						<Button
 							type="submit"
 							disabled={isSubmitting}
-							className="w-full"
+							className="w-full space-x-2"
 						>
-							{isSubmitting ? (
-								<LoadingSpinner margin={2} />
-							) : null}
+							{isSubmitting ? <LoadingSpinner /> : null}
 							{isSubmitting
 								? "Investing..."
 								: "Confirm Investment"}

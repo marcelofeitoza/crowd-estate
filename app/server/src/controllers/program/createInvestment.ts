@@ -6,6 +6,7 @@ import {
 } from "../../services/crowd-estate";
 import { supabase } from "../../services/supabase";
 import { RedisKeyTemplates, redis, RedisKeys } from "../../services/redis";
+import { Investment } from "../../models/Investment";
 
 const createInvestmentSchema = z.object({
 	investorPublicKey: z.string().min(32),
@@ -17,6 +18,7 @@ const createInvestmentSchema = z.object({
 export const handleCreateInvestment = async (body: any) => {
 	const parseResult = createInvestmentSchema.safeParse(body);
 	if (!parseResult.success) {
+		console.error("Invalid input parameters:", parseResult.error);
 		throw { code: 400, message: "Invalid input parameters" };
 	}
 
@@ -24,27 +26,31 @@ export const handleCreateInvestment = async (body: any) => {
 		parseResult.data;
 
 	try {
-		const cacheKey =
-			RedisKeyTemplates.investmentsByInvestor(investorPublicKey);
-		await redis.del(cacheKey);
-		await redis.del(RedisKeyTemplates.property(propertyPda));
-		await redis.del(RedisKeys.Properties);
-		await redis.del(RedisKeys.PropertiesAll);
+		const cacheKeys = [
+			RedisKeyTemplates.investmentsByInvestor(investorPublicKey),
+			RedisKeyTemplates.investmentsDataByInvestor(investorPublicKey), // Adicionado
+			RedisKeyTemplates.property(propertyPda),
+			RedisKeys.Properties,
+			RedisKeys.PropertiesAll,
+		];
+		console.log("Invalidating cache keys:", cacheKeys);
+		await redis.invalidate(cacheKeys);
 
-		const investmentAccount = await waitForInvestmentAccount(investmentPda);
+		// const investmentAccount = await waitForInvestmentAccount(investmentPda);
+		// console.log("Investment Account:", investmentAccount);
 
-		if (!investmentAccount) {
-			throw {
-				code: 404,
-				message: "Investment account not found on-chain",
-			};
-		}
+		// if (!investmentAccount) {
+		// 	throw {
+		// 		code: 404,
+		// 		message: "Investment account not found on-chain",
+		// 	};
+		// }
 
 		const investmentData = {
 			investor_public_key: investorPublicKey,
 			property_pda: propertyPda,
-			amount: investmentAccount.tokensOwned.toNumber(),
-			dividends_claimed: investmentAccount.dividendsClaimed.toNumber(),
+			// amount: investmentAccount.amount,
+			// dividends_claimed: investmentAccount.dividendsClaimed,
 			investment_pda: investmentPda,
 			created_at: new Date().toISOString(),
 		};
@@ -60,16 +66,45 @@ export const handleCreateInvestment = async (body: any) => {
 			throw { code: 500, message: "Failed to record investment" };
 		}
 
+		console.log("Investment successfully inserted into Supabase");
+
 		const updatedInvestments = await getInvestmentsByInvestor(
 			investorPublicKey
 		);
-		await redis.set(cacheKey, JSON.stringify(updatedInvestments));
-
-		const updatedProperties = await getProperties();
 		await redis.set(
-			RedisKeys.PropertiesAll,
-			JSON.stringify(updatedProperties)
+			RedisKeyTemplates.investmentsByInvestor(investorPublicKey),
+			updatedInvestments
 		);
+		console.log("Updated investmentsByInvestor cache");
+
+		const properties = await getProperties();
+		let invested = 0;
+		let returns = 0;
+
+		updatedInvestments.forEach((investment: Investment) => {
+			const property = properties.find(
+				(p) => p.publicKey === investment.property
+			);
+			if (property) {
+				invested += investment.amount * property.token_price_usdc;
+				returns += investment.dividendsClaimed / 1e6;
+			}
+		});
+
+		const investmentsDataResult = {
+			investmentsData: updatedInvestments,
+			invested,
+			returns,
+		};
+		await redis.set(
+			RedisKeyTemplates.investmentsDataByInvestor(investorPublicKey),
+			investmentsDataResult
+		);
+		console.log("Updated investmentsDataByInvestor cache");
+
+		// Atualiza o cache de PropertiesAll
+		await redis.set(RedisKeys.PropertiesAll, properties);
+		console.log("Updated PropertiesAll cache");
 
 		return { investment: data };
 	} catch (err: any) {
@@ -100,9 +135,13 @@ async function waitForInvestmentAccount(
 			}
 		} catch (err: any) {
 			if (err.code === 404) {
+				console.log(
+					`Attempt ${attempts}: Investment account not found. Retrying in ${interval}ms...`
+				);
 				await new Promise((resolve) => setTimeout(resolve, interval));
 				continue;
 			} else {
+				console.error(`Attempt ${attempts}: Unexpected error:`, err);
 				throw err;
 			}
 		}

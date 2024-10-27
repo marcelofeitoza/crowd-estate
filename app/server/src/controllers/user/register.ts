@@ -10,13 +10,14 @@ const createHandleRegisterSchema = z.object({
 
 export const handleRegister = async (body: any) => {
 	console.log("Registering user:", body);
-	const {
-		data: { publicKey, name, role },
-	} = createHandleRegisterSchema.safeParse(body);
+	const parseResult = createHandleRegisterSchema.safeParse(body);
 
-	if (!publicKey || !name || !role) {
-		throw { code: 400, message: "Missing parameters" };
+	if (!parseResult.success) {
+		console.error("Invalid input parameters:", parseResult.error);
+		throw { code: 400, message: "Invalid input parameters" };
 	}
+
+	const { publicKey, name, role } = parseResult.data;
 
 	try {
 		const { data: existingUser, error } = await supabase
@@ -28,35 +29,37 @@ export const handleRegister = async (body: any) => {
 		if (existingUser) {
 			throw { code: 409, message: "User already exists" };
 		}
+
+		const { data, error: insertError } = await supabase
+			.from("users")
+			.insert([
+				{
+					public_key: publicKey,
+					name,
+					role: role || Role.Investor,
+				},
+			])
+			.select("*")
+			.single();
+
+		if (insertError || !data) {
+			console.error("Error registering user in Supabase:", insertError);
+			throw { code: 500, message: "Failed to register user" };
+		}
+
+		const user = {
+			id: data.id,
+			publicKey: data.public_key,
+			name: data.name,
+			role: data.role,
+		};
+
+		return { user };
 	} catch (err: any) {
 		if (err.code === 409) {
 			throw err;
 		}
-	}
-
-	const { data, error } = await supabase
-		.from("users")
-		.insert([
-			{
-				public_key: publicKey,
-				name,
-				role: role || Role.Investor,
-			},
-		])
-		.select("*")
-		.single();
-
-	if (error || !data) {
-		console.error("Error registering user in Supabase:", error);
+		console.error("Error registering user:", err);
 		throw { code: 500, message: "Failed to register user" };
 	}
-
-	const user = {
-		id: data.id,
-		publicKey: data.public_key,
-		name: data.name,
-		role: data.role,
-	};
-
-	return { user };
 };

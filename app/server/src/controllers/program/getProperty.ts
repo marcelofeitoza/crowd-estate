@@ -1,7 +1,7 @@
 import { getProperty } from "../../services/crowd-estate";
 import { redis, RedisKeyTemplates } from "../../services/redis";
 
-export const handleGetProperty = async (propertyPda) => {
+export const handleGetProperty = async (propertyPda: string) => {
 	if (!propertyPda) {
 		throw {
 			code: 400,
@@ -14,12 +14,12 @@ export const handleGetProperty = async (propertyPda) => {
 		const cachedProperty = await redis.get(cacheKey);
 
 		if (cachedProperty) {
-			return { property: JSON.parse(cachedProperty) };
+			return { property: cachedProperty };
 		}
 
 		const property = await getProperty(propertyPda);
 
-		await redis.set(`property:${propertyPda}`, JSON.stringify(property));
+		await redis.set(RedisKeyTemplates.property(propertyPda), property);
 
 		return { property };
 	} catch (error: any) {

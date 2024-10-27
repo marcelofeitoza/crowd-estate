@@ -1,12 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
 import { CrowdEstate } from "../../../../target/types/crowd_estate";
 import IDL from "../../../../target/idl/crowd_estate.json";
-import { Connection, Keypair } from "@solana/web3.js";
+import { clusterApiUrl, Connection, Keypair } from "@solana/web3.js";
 import { Wallet } from "@coral-xyz/anchor";
 import { Property } from "../models/Property";
 import { Filters } from "../controllers/program/listProperties";
 import { Investment } from "../models/Investment";
-import { redis, RedisKeys } from "./redis";
+import { redis, RedisKeys, RedisKeyTemplates } from "./redis";
 
 const admKeypairBytesString = process.env.ADM!;
 if (!admKeypairBytesString) {
@@ -14,11 +14,13 @@ if (!admKeypairBytesString) {
 }
 const admKeypairBytes = Uint8Array.from(JSON.parse(admKeypairBytesString));
 
-const endpoint = "https://api.devnet.solana.com";
-const connection = new Connection(endpoint);
+const endpoint = clusterApiUrl("devnet");
+const connection = new Connection(endpoint, "confirmed");
 const walletKeypair = Keypair.fromSecretKey(admKeypairBytes);
 const wallet = new Wallet(walletKeypair);
-const provider = new anchor.AnchorProvider(connection, wallet);
+const provider = new anchor.AnchorProvider(connection, wallet, {
+	preflightCommitment: "confirmed",
+});
 const program = new anchor.Program<CrowdEstate>(IDL as CrowdEstate, provider);
 console.log("programID", program.programId);
 
@@ -38,39 +40,37 @@ export const getProperties = async (
 	let propertiesData: Property[];
 
 	if (!forceRefresh) {
-		const cachedProperties = await redis.get(cacheKey);
-		if (cachedProperties) {
-			console.log(`[getProperties] Cache hit for key: ${cacheKey}`);
-			propertiesData = JSON.parse(cachedProperties);
-		} else {
-			console.log(
-				`[getProperties] Cache miss for key: ${cacheKey}. Fetching from blockchain.`
-			);
-			const fetchedProperties = await program.account.property.all();
+		// const cachedProperties = await redis.get(cacheKey);
+		// if (cachedProperties) {
+		// 	console.log(`[getProperties] Cache hit for key: ${cacheKey}`);
+		// 	propertiesData = cachedProperties;
+		// } else {
+		console.log(
+			`[getProperties] Cache miss for key: ${cacheKey}. Fetching from blockchain.`
+		);
+		const fetchedProperties = await program.account.property.all();
 
-			propertiesData = fetchedProperties.map((property) => ({
-				publicKey: property.publicKey.toBase58(),
-				property_name: Buffer.from(property.account.propertyName)
-					.toString()
-					.trim(),
-				total_tokens: property.account.totalTokens.toNumber(),
-				available_tokens: property.account.availableTokens.toNumber(),
-				token_price_usdc:
-					property.account.tokenPriceUsdc.toNumber() / 1e6,
-				token_symbol: Buffer.from(property.account.tokenSymbol)
-					.toString()
-					.trim(),
-				admin: property.account.admin.toBase58(),
-				mint: property.account.mint.toBase58(),
-				bump: property.account.bump,
-				dividends_total:
-					property.account.dividendsTotal.toNumber() / 1e6,
-				is_closed: property.account.isClosed,
-			}));
+		propertiesData = fetchedProperties.map((property) => ({
+			publicKey: property.publicKey.toBase58(),
+			property_name: Buffer.from(property.account.propertyName)
+				.toString()
+				.trim(),
+			total_tokens: property.account.totalTokens.toNumber(),
+			available_tokens: property.account.availableTokens.toNumber(),
+			token_price_usdc: property.account.tokenPriceUsdc.toNumber() / 1e6,
+			token_symbol: Buffer.from(property.account.tokenSymbol)
+				.toString()
+				.trim(),
+			admin: property.account.admin.toBase58(),
+			mint: property.account.mint.toBase58(),
+			bump: property.account.bump,
+			dividends_total: property.account.dividendsTotal.toNumber() / 1e6,
+			is_closed: property.account.isClosed,
+		}));
 
-			await redis.set(cacheKey, JSON.stringify(propertiesData));
-			console.log(`[getProperties] Cache set for key: ${cacheKey}`);
-		}
+		await redis.set(cacheKey, propertiesData);
+		console.log(`[getProperties] Cache set for key: ${cacheKey}`);
+		// }
 	} else {
 		console.log(
 			`[getProperties] forceRefresh=true. Fetching properties from blockchain.`
@@ -95,7 +95,7 @@ export const getProperties = async (
 			is_closed: property.account.isClosed,
 		}));
 
-		await redis.set(cacheKey, JSON.stringify(propertiesData));
+		await redis.set(cacheKey, propertiesData);
 		console.log(`[getProperties] Cache updated for key: ${cacheKey}`);
 	}
 
@@ -117,11 +117,14 @@ export const getProperties = async (
 		return true;
 	});
 
+	console.log(
+		`[getProperties] Returning ${filteredProperties.length} properties after filtering.`
+	);
 	return filteredProperties;
 };
 
 export const getProperty = async (propertyPda: string): Promise<Property> => {
-	const cacheKey = `property:${propertyPda}`;
+	const cacheKey = RedisKeyTemplates.property(propertyPda);
 	const cachedProperty = await redis.get(cacheKey);
 	if (cachedProperty) {
 		return JSON.parse(cachedProperty);
@@ -153,7 +156,7 @@ export const getProperty = async (propertyPda: string): Promise<Property> => {
 		is_closed: propertyAccount.isClosed,
 	};
 
-	await redis.set(cacheKey, JSON.stringify(property));
+	await redis.set(cacheKey, property);
 
 	return property;
 };
@@ -161,20 +164,15 @@ export const getProperty = async (propertyPda: string): Promise<Property> => {
 export const getPropertiesByPDAs = async (
 	propertyPDAs: string[]
 ): Promise<Property[]> => {
-	const properties: Property[] = [];
-
-	for (const pda of propertyPDAs) {
-		const property = await getProperty(pda);
-		properties.push(property);
-	}
-
+	const propertiesPromises = propertyPDAs.map((pda) => getProperty(pda));
+	const properties = await Promise.all(propertiesPromises);
 	return properties;
 };
 
 export const getInvestmentsByInvestor = async (
 	investorPublicKey: string
 ): Promise<Investment[]> => {
-	const cacheKey = `investments:${investorPublicKey}`;
+	const cacheKey = RedisKeyTemplates.investmentsByInvestor(investorPublicKey);
 	const cachedInvestments = await redis.get(cacheKey);
 	if (cachedInvestments) {
 		console.log("Returning investments from cache");
@@ -199,7 +197,7 @@ export const getInvestmentsByInvestor = async (
 		investor: investment.account.investor.toBase58(),
 	}));
 
-	await redis.set(cacheKey, JSON.stringify(investments));
+	await redis.set(cacheKey, investments);
 
 	return investments;
 };

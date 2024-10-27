@@ -28,17 +28,18 @@ export const handleCreateProperty = async (
 	const { userPublicKey, propertyPda, txSignature } = parseResult.data;
 
 	try {
-		const cacheKey = RedisKeyTemplates.property(propertyPda);
-		await redis.del(cacheKey);
-		await redis.del(RedisKeyTemplates.property(propertyPda));
-		await redis.del(RedisKeys.Properties);
-		await redis.del(RedisKeys.PropertiesAll);
+		const cacheKeys = [
+			RedisKeyTemplates.property(propertyPda),
+			RedisKeys.Properties,
+			RedisKeys.PropertiesAll,
+		];
+		await redis.invalidate(cacheKeys);
 
-		const property = await verifyProperty(propertyPda);
+		// const property = await verifyProperty(propertyPda);
 
-		if (!userPublicKey || !property) {
-			throw { code: 400, message: "Missing parameters" };
-		}
+		// if (!userPublicKey || !property) {
+		// 	throw { code: 400, message: "Missing parameters" };
+		// }
 
 		let user: User | null = null;
 		let { data: userData, error: userError } = await supabase
@@ -79,16 +80,16 @@ export const handleCreateProperty = async (
 				{
 					property_pda: propertyPda,
 					creator_public_key: userPublicKey,
-					property_name: property.property_name,
-					total_tokens: property.total_tokens,
-					available_tokens: property.available_tokens,
-					token_price_usdc: property.token_price_usdc,
-					token_symbol: property.token_symbol,
-					admin: property.admin,
-					mint: property.mint,
-					bump: property.bump,
-					dividends_total: property.dividends_total,
-					is_closed: property.is_closed,
+					// property_name: property.property_name,
+					// total_tokens: property.total_tokens,
+					// available_tokens: property.available_tokens,
+					// token_price_usdc: property.token_price_usdc,
+					// token_symbol: property.token_symbol,
+					// admin: property.admin,
+					// mint: property.mint,
+					// bump: property.bump,
+					// dividends_total: property.dividends_total,
+					// is_closed: property.is_closed,
 				},
 			])
 			.select("*")
@@ -102,7 +103,9 @@ export const handleCreateProperty = async (
 		const properties = await getProperties();
 		updateSupabaseWithProperties(properties);
 
-		return { property };
+		return {
+			property: propertyData as Property,
+		};
 	} catch (err: any) {
 		console.error("Error creating property:", err);
 		throw {

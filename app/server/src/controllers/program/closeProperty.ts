@@ -18,22 +18,46 @@ export const handleCloseProperty = async (body: any) => {
 	const { userPublicKey, propertyPda, txSignature } = parseResult.data;
 
 	try {
+		// const transaction = await program.provider.connection.getTransaction(
+		// 	txSignature,
+		// 	{
+		// 		commitment: "confirmed",
+		// 		maxSupportedTransactionVersion: 0,
+		// 	}
+		// );
+
+		// if (!transaction) {
+		// 	throw { code: 404, message: "Transaction not found" };
+		// }
+
 		const { data, error } = await supabase
 			.from("properties")
-			.update({ is_closed: true })
+			.delete()
+			// .update({ is_closed: true })
 			.eq("property_pda", propertyPda);
 
 		if (error) {
-			console.error("Error closing property:", error);
+			console.error("Error updating property in Supabase:", error);
 			throw { code: 500, message: "Failed to close property" };
 		}
 
-		await redis.del(RedisKeys.PropertiesAll);
-		await redis.del(RedisKeyTemplates.property(propertyPda));
-		await redis.del(RedisKeys.Properties);
+		console.log("Propriedade atualizada no Supabase com is_closed: true");
 
-		const properties = await getProperties();
+		const cacheKeys = [
+			RedisKeys.PropertiesAll,
+			RedisKeyTemplates.property(propertyPda),
+			RedisKeys.Properties,
+		];
+		console.log(`Invalidando as chaves de cache: ${cacheKeys.join(", ")}`);
+		await redis.invalidate(cacheKeys);
+
+		console.log("Buscando propriedades atualizadas com forceRefresh=true");
+		const properties = await getProperties(undefined, undefined, true);
 		await updateSupabaseWithProperties(properties);
+
+		console.log(
+			"Propriedades atualizadas no Supabase a partir da blockchain"
+		);
 
 		return { message: "Property closed successfully" };
 	} catch (err: any) {

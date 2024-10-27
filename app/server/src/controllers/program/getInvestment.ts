@@ -1,4 +1,4 @@
-import { getInvestment, getProperty } from "../../services/crowd-estate";
+import { getInvestment } from "../../services/crowd-estate";
 import { redis, RedisKeyTemplates } from "../../services/redis";
 
 export const handleGetInvestment = async (investmentPda: string) => {
@@ -13,15 +13,17 @@ export const handleGetInvestment = async (investmentPda: string) => {
 		const cacheKey = RedisKeyTemplates.investment(investmentPda);
 		const cachedInvestment = await redis.get(cacheKey);
 		if (cachedInvestment) {
-			return { investment: JSON.parse(cachedInvestment) };
+			return { investment: cachedInvestment };
 		}
 
 		const investment = await getInvestment(investmentPda);
 
-		await redis.set(
-			`investment:${investmentPda}`,
-			JSON.stringify(investment)
-		);
+		if (investment) {
+			await redis.set(
+				RedisKeyTemplates.investment(investmentPda),
+				investment
+			);
+		}
 
 		return { investment };
 	} catch (error: any) {

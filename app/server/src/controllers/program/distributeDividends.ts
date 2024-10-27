@@ -1,14 +1,8 @@
 import { z } from "zod";
 import { program } from "../../services/crowd-estate";
 import { supabase } from "../../services/supabase";
-import { redis } from "../../services/redis";
+import { redis, RedisKeys, RedisKeyTemplates } from "../../services/redis";
 
-// {
-//     "amount": 90,
-//     "propertyPda": "CtcH7rWRxkpf3cGwn4qq5zevMK2PP7zrPkmDkSvJtQyp",
-//     "userPublicKey": "AohfrTqQwDFGpco3AVHQjCwyJgnXvyT5Ytz8dwppib9E",
-//     "txSignature": "4hFkPMSE4MwbzG6BnUjH5qBwFyrsJokVhr8P2yvRV8GVXnQEFKBPmEMJRYqgZkALNzjqVDZ4yxcbrUHMBV6WGWWL"
-// }
 const distributeDividendsSchema = z.object({
 	amount: z.number().positive(),
 	propertyPda: z.string().min(32),
@@ -47,7 +41,12 @@ export const handleDistributeDividends = async (body: any) => {
 			throw { code: 500, message: "Failed to distribute dividends" };
 		}
 
-		await redis.del("properties");
+		const cacheKeys = [
+			RedisKeys.PropertiesAll,
+			RedisKeyTemplates.property(propertyPda),
+			RedisKeys.Properties,
+		];
+		await redis.invalidate(cacheKeys);
 
 		return { message: "Dividends distributed successfully" };
 	} catch (err: any) {
