@@ -68,6 +68,11 @@ impl<'info> RedeemDividends<'info> {
             .checked_add(dividends_to_claim)
             .ok_or(crate::errors::Errors::OverflowError)?;
 
+        self.property.dividends_total = property
+            .dividends_total
+            .checked_sub(dividends_to_claim)
+            .ok_or(crate::errors::Errors::OverflowError)?;
+
         Ok(())
     }
 }

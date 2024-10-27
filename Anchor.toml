@@ -5,13 +5,16 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-crowd_estate = "BCm7jbeWNb2eu4DghTSbaZW5nASyk69bQ4ozqTd6XExi"
+crowd_estate = "rwa5WajX9npiz1iHAHYQ9AwGcKAM9Ru8DkrRkfGjN9d"
+
+[programs.devnet]
+crowd_estate = "rwa5WajX9npiz1iHAHYQ9AwGcKAM9Ru8DkrRkfGjN9d"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
