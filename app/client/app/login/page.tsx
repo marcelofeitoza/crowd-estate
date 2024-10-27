@@ -25,6 +25,13 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { LogIn, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 
 export default function LoginPage() {
 	const { connect, select, publicKey } = useWallet();
@@ -202,27 +209,48 @@ export default function LoginPage() {
 					<DialogHeader>
 						<DialogTitle>Complete Your Registration</DialogTitle>
 					</DialogHeader>
-					<div className="space-y-4 py-4">
-						<p className="text-sm text-muted-foreground">
-							Please enter your name to complete the registration
-							process.
-						</p>
-						<Input
-							placeholder="Enter your name"
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-						/>
 
-						<p className="text-sm text-muted-foreground">
-							Please select your role
-						</p>
-						<select
-							className="w-full rounded-lg"
-							onChange={(e) => setRole(e.target.value as Role)}
-						>
-							<option value={Role.Investor}>Investor</option>
-							<option value={Role.Landlord}>Landlord</option>
-						</select>
+					<div className="space-y-4 py-4">
+						<div className="space-y-2">
+							<label
+								htmlFor="name"
+								className="text-sm font-medium"
+							>
+								Name
+							</label>
+							<Input
+								id="name"
+								placeholder="Enter your name"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+							/>
+						</div>
+						<div className="space-y-2">
+							<label
+								htmlFor="role"
+								className="text-sm font-medium"
+							>
+								Role
+							</label>
+							<Select
+								onValueChange={(value) =>
+									setRole(value as Role)
+								}
+								defaultValue={role}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Select your role" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={Role.Investor}>
+										Investor
+									</SelectItem>
+									<SelectItem value={Role.Landlord}>
+										Landlord
+									</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
 					</div>
 
 					<DialogFooter>
