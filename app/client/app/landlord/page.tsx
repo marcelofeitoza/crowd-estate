@@ -5,11 +5,15 @@ import { Navbar } from "@/components/Navbar";
 import { useCallback, useEffect, useState } from "react";
 import { SendTransactionError } from "@solana/web3.js";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAnchor } from "@/hooks/use-anchor";
 import CreatePropertyModal from "@/components/CreatePropertyModal";
-import { DollarSign, Coins, ChartColumnIcon } from "lucide-react";
+import {
+	DollarSign,
+	Coins,
+	ChartColumnIcon,
+	RefreshCwIcon,
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Profile } from "@/components/Profile";
 import { createPropertyTransaction } from "@/services/program";
@@ -20,6 +24,8 @@ import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
+import { ManagePropertyModal } from "@/components/ManagePropertyModal";
+import { Button } from "@/components/ui/button";
 
 interface Property {
 	publicKey: string;
@@ -65,9 +71,11 @@ export default function Landloard() {
 		});
 	};
 
-	const fetchProperties = useCallback(async () => {
+	const fetchProperties = useCallback(async (forceRefresh?: boolean) => {
 		try {
-			const propertiesData = await getProperties();
+			const propertiesData = await getProperties({
+				forceRefresh,
+			});
 			console.log("Fetched properties:", propertiesData);
 			setProperties(propertiesData);
 		} catch (error) {
@@ -149,6 +157,10 @@ export default function Landloard() {
 		}
 	};
 
+	const handleActionSuccess = () => {
+		fetchProperties(true);
+	};
+
 	if (!isAuthenticated) {
 		return (
 			<div className="min-h-screen bg-background text-foreground flex items-center justify-center">
@@ -162,7 +174,15 @@ export default function Landloard() {
 			<main className="container mx-auto p-6">
 				<Profile user={user} properties={properties} type="landlord" />
 				<div className="flex justify-between items-center mb-6">
-					<h2 className="text-3xl font-bold">Your Properties</h2>
+					<div className="flex space-x-2">
+						<h2 className="text-3xl font-bold">Your Properties</h2>
+						<Button
+							variant="ghost"
+							onClick={() => fetchProperties()}
+						>
+							<RefreshCwIcon />
+						</Button>
+					</div>
 					<CreatePropertyModal
 						createProperty={createProperty}
 						form={form}
@@ -314,12 +334,33 @@ export default function Landloard() {
 													</div>
 												</div>
 											)}
+											{property.dividends_total > 0 && (
+												<div className="flex items-center">
+													<Coins className="w-4 h-4 mr-2 text-muted-foreground" />
+													<div>
+														<p className="text-sm font-medium">
+															Dividends Total
+														</p>
+														<p className="text-lg">
+															${" "}
+															{property.dividends_total.toLocaleString(
+																undefined,
+																{
+																	minimumFractionDigits: 2,
+																	maximumFractionDigits: 2,
+																}
+															)}
+														</p>
+													</div>
+												</div>
+											)}
 										</div>
 									</>
 
-									<Button className="w-full mt-8">
-										Manage
-									</Button>
+									<ManagePropertyModal
+										property={property}
+										onActionSuccess={handleActionSuccess}
+									/>
 								</CardContent>
 							</Card>
 						))

@@ -19,7 +19,6 @@ if (!PRIVATE_KEY) {
 }
 const ADM = Uint8Array.from(JSON.parse(PRIVATE_KEY));
 const admKeypair = anchor.web3.Keypair.fromSecretKey(ADM);
-
 export const network = WalletAdapterNetwork.Devnet;
 export const endpoint = "https://api.devnet.solana.com";
 export const USDC_MINT = new PublicKey(

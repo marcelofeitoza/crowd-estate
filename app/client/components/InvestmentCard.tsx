@@ -1,115 +1,191 @@
-import { ellipsify, Investment, Property } from "@/utils/solana";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Coins, Wallet } from "lucide-react";
-import { ManageInvestmentModal } from "./ManageInvestmentModal";
+"use client";
+
 import { useEffect, useState } from "react";
 import { useAnchor } from "@/hooks/use-anchor";
-import { PublicKey } from "@solana/web3.js";
-import { LoadingSpinner } from "./LoadingSpinner";
+import { ellipsify, Investment, Property } from "@/utils/solana";
+import { getProperty } from "@/services/data";
+import {
+	Card,
+	CardHeader,
+	CardTitle,
+	CardDescription,
+	CardContent,
+	CardFooter,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Coins, Wallet, Building, TrendingUp } from "lucide-react";
+import { ManageInvestmentModal } from "./ManageInvestmentModal";
 
-export const InvestmentCard = ({
-  investment,
-  onManagementSuccess,
-}: {
-  investment: Investment;
-  onManagementSuccess: (refetch?: boolean) => void;
+interface InvestmentCardProps {
+	investment: Investment;
+	onManagementSuccess: (refetch?: boolean) => void;
+}
+
+export const InvestmentCard: React.FC<InvestmentCardProps> = ({
+	investment,
+	onManagementSuccess,
 }) => {
-  const { program } = useAnchor();
-  const [propertyData, setPropertyData] = useState<Property>();
-  const [loading, setLoading] = useState(true);
+	const { program } = useAnchor();
+	const [propertyData, setPropertyData] = useState<Property>();
+	const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchPropertyData = async () => {
-      const p = await program.account.property.fetch(
-        new PublicKey(investment.property),
-      );
+	useEffect(() => {
+		const fetchPropertyData = async () => {
+			try {
+				const property = await getProperty(investment.property);
+				setPropertyData(property);
+			} catch (error) {
+				console.error("Error fetching property data:", error);
+			} finally {
+				setLoading(false);
+			}
+		};
 
-      setPropertyData({
-        mint: p.mint.toBase58(),
-        admin: p.admin.toBase58(),
-        available_tokens: p.availableTokens.toNumber(),
-        bump: p.bump,
-        dividends_total: p.dividendsTotal.toNumber(),
-        is_closed: p.isClosed,
-        property_name: Buffer.from(p.propertyName).toString(),
-        publicKey: investment.property,
-        token_price_usdc: p.tokenPriceUsdc.toNumber() / 1e6,
-        token_symbol: Buffer.from(p.tokenSymbol).toString(),
-        total_tokens: p.totalTokens.toNumber(),
-      });
-      setLoading(false);
-    };
+		if (investment.property) {
+			fetchPropertyData();
+		}
+	}, [investment, program]);
 
-    if (investment.property) {
-      fetchPropertyData();
-    }
-  }, [investment, program.account.property]);
+	useEffect(() => {
+		console.log("investment", investment);
+		console.log("propertyData", propertyData);
+	}, [investment, propertyData]);
 
-  return (
-    <Card>
-      {loading ? (
-        <LoadingSpinner margin={8} />
-      ) : (
-        <>
-          <CardHeader>
-            <CardTitle className="text-xl mb-1">
-              Investment in{" "}
-              <p className="font-bold hover:scale-105 transition-transform inline cursor-pointer">
-                {propertyData?.property_name}
-              </p>
-            </CardTitle>
-            <CardDescription>
-              Investment ID: {ellipsify(investment.publicKey)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <Wallet className="w-4 h-4 mr-2 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Invested Amount</p>
-                  <p className="text-lg">
-                    {investment.amount.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    {propertyData?.token_symbol}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <Coins className="w-4 h-4 mr-2 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Dividends Claimed</p>
-                  <p className="text-lg">
-                    ${" "}
-                    {investment.dividendsClaimed.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            {investment.amount > 0 && (
-              <ManageInvestmentModal
-                investment={investment}
-                propertyData={propertyData}
-                onManagementSuccess={onManagementSuccess}
-              />
-            )}
-          </CardFooter>
-        </>
-      )}
-    </Card>
-  );
+	const investmentValue = propertyData
+		? investment.amount * propertyData.token_price_usdc
+		: 0;
+
+	const InvestmentDetail = ({ icon, label, value }) => (
+		<div className="flex items-center space-x-2">
+			{icon}
+			<div>
+				<p className="text-sm font-medium text-muted-foreground">
+					{label}
+				</p>
+				<p className="text-lg font-semibold">{value}</p>
+			</div>
+		</div>
+	);
+
+	return (
+		<Card className="overflow-hidden">
+			<CardHeader className="pb-2">
+				<div className="flex justify-between items-start">
+					<div>
+						<CardTitle className="text-xl mb-1">
+							{loading ? (
+								<Skeleton className="h-6 w-48" />
+							) : (
+								<span className="font-bold hover:text-primary transition-colors">
+									{propertyData?.property_name}
+								</span>
+							)}
+						</CardTitle>
+						<CardDescription>
+							{loading ? (
+								<Skeleton className="h-4 w-36" />
+							) : (
+								<>
+									Investment ID:{" "}
+									{ellipsify(investment.publicKey)}
+								</>
+							)}
+						</CardDescription>
+					</div>
+					{!loading && propertyData && (
+						<Badge
+							variant={
+								propertyData.is_closed
+									? "destructive"
+									: "secondary"
+							}
+						>
+							{propertyData.is_closed ? "Closed" : "Active"}
+						</Badge>
+					)}
+				</div>
+			</CardHeader>
+			<CardContent className="pb-2">
+				{loading ? (
+					<div className="space-y-2">
+						<Skeleton className="h-4 w-full" />
+						<Skeleton className="h-4 w-full" />
+						<Skeleton className="h-4 w-full" />
+					</div>
+				) : (
+					<>
+						<div className="mb-4">
+							<div className="flex justify-between text-sm mb-1">
+								<span>Investment Progress</span>
+								<span>
+									{(
+										(investment.amount /
+											propertyData.total_tokens) *
+										100
+									).toFixed(2)}
+									%
+								</span>
+							</div>
+							<Progress
+								value={
+									(investment.amount /
+										propertyData.total_tokens) *
+									100
+								}
+							/>
+						</div>
+						<div className="grid grid-cols-2 gap-4">
+							<InvestmentDetail
+								icon={
+									<Wallet className="w-4 h-4 text-primary" />
+								}
+								label="Invested Amount"
+								value={`${investment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${propertyData?.token_symbol}`}
+							/>
+							<InvestmentDetail
+								icon={
+									<Building className="w-4 h-4 text-primary" />
+								}
+								label="Investment Value"
+								value={`$${investmentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+							/>
+							{investment.dividendsClaimed > 0 && (
+								<InvestmentDetail
+									icon={
+										<Coins className="w-4 h-4 text-primary" />
+									}
+									label="Dividends Claimed"
+									value={`$${(investment.dividendsClaimed / 1e6).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+								/>
+							)}
+							<InvestmentDetail
+								icon={
+									<TrendingUp className="w-4 h-4 text-primary" />
+								}
+								label="Token Price"
+								value={`$${propertyData?.token_price_usdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+							/>
+						</div>
+					</>
+				)}
+			</CardContent>
+			<Separator />
+			<CardFooter className="pt-4">
+				{loading ? (
+					<Skeleton className="h-10 w-full" />
+				) : (
+					investment.amount > 0 && (
+						<ManageInvestmentModal
+							investment={investment}
+							propertyData={propertyData}
+							onManagementSuccess={onManagementSuccess}
+						/>
+					)
+				)}
+			</CardFooter>
+		</Card>
+	);
 };

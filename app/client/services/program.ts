@@ -9,6 +9,7 @@ import {
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import {
 	ASSOCIATED_TOKEN_PROGRAM_ID,
+	createAssociatedTokenAccountInstruction,
 	createInitializeMintInstruction,
 	getAssociatedTokenAddress,
 	TOKEN_PROGRAM_ID,
@@ -20,7 +21,13 @@ import {
 	Transaction,
 } from "@solana/web3.js";
 import { WalletContextState } from "@solana/wallet-adapter-react";
-import { createPropertyBackend } from "./user";
+import {
+	createInvestmentBackend,
+	createPropertyBackend,
+	closePropertyBackend,
+	withdrawInvestmentBackend,
+	distributeDividendsBackend,
+} from "./user";
 
 export async function createPropertyTransaction(
 	provider: AnchorProvider,
@@ -148,12 +155,18 @@ export async function createPropertyTransaction(
 		}
 	);
 
-	await provider.connection.confirmTransaction(txSignature, "confirmed");
-
-	await createPropertyBackend({
-		propertyPda: propertyPda.toBase58(),
-		userPublicKey: adminPublicKey.toBase58(),
-	});
+	await provider.connection
+		.confirmTransaction(txSignature, "confirmed")
+		.then(async () => {
+			await createPropertyBackend({
+				propertyPda: propertyPda.toBase58(),
+				userPublicKey: adminPublicKey.toBase58(),
+				txSignature,
+			});
+		})
+		.catch((e) => {
+			console.error("Error creating property", e);
+		});
 
 	return {
 		txSignature,
@@ -177,10 +190,26 @@ export async function investInPropertyTransaction(
 		program.programId
 	);
 
-	const investmentAccount =
-		await program.account.investor.fetchNullable(investmentPda);
-	if (investmentAccount) {
-		throw new Error("Investment already exists");
+	const investmentAccountInfo =
+		await provider.connection.getAccountInfo(investmentPda);
+	if (investmentAccountInfo) {
+		console.log("Investment PDA already exists");
+
+		const investmentData =
+			await program.account.investor.fetch(investmentPda);
+		console.log("Investment PDA data", investmentData);
+		if (
+			investmentData &&
+			investmentData.investor.toBase58() == wallet.publicKey.toBase58()
+		) {
+			console.log("Investment PDA is valid, skipping creation");
+			return {
+				txSignature: null,
+				investment: investmentPda,
+			};
+		} else {
+			throw new Error("Investment PDA exists but contains invalid data");
+		}
 	}
 
 	const tx = new Transaction();
@@ -232,8 +261,16 @@ export async function investInPropertyTransaction(
 		systemProgram: SystemProgram.programId,
 	};
 
+	const usdcAmountBN = new anchor.BN(
+		(BigInt(usdcAmount) * BigInt(1e6)).toString()
+	);
+
+	console.log("Invest in property", {
+		usdcAmount,
+		usdcAmountBN,
+	});
 	const investIx = await program.methods
-		.investInProperty(new anchor.BN(usdcAmount * 1e6))
+		.investInProperty(usdcAmountBN)
 		.accountsStrict(accounts)
 		.instruction();
 	tx.add(investIx);
@@ -244,14 +281,20 @@ export async function investInPropertyTransaction(
 
 	const signedTx = await wallet.signTransaction(tx);
 	const txSignature = await provider.connection.sendRawTransaction(
-		signedTx.serialize(),
-		{
-			skipPreflight: false,
-			preflightCommitment: "confirmed",
-		}
+		signedTx.serialize()
 	);
 
-	await provider.connection.confirmTransaction(txSignature, "confirmed");
+	await provider.connection
+		.confirmTransaction(txSignature, "confirmed")
+		.then(async () => {
+			console.log("Investment transaction sent", txSignature);
+			await createInvestmentBackend({
+				investmentPda: investmentPda.toBase58(),
+				investorPublicKey: wallet.publicKey.toBase58(),
+				propertyPda: property.publicKey,
+				txSignature,
+			});
+		});
 
 	return { txSignature, investment: investmentPda };
 }
@@ -262,7 +305,7 @@ export async function withdrawInvestment(
 	investment: Investment,
 	propertyData: Property,
 	wallet: WalletContextState
-) {
+): Promise<{ txSignature: string; investmentPda: string }> {
 	const investmentPda = investment.publicKey;
 	const tx = new Transaction();
 	const investorUsdcAta = await ensureAssociatedTokenAccount(
@@ -321,64 +364,177 @@ export async function withdrawInvestment(
 			preflightCommitment: "confirmed",
 		}
 	);
-	await provider.connection.confirmTransaction(txSignature, "confirmed");
+	await provider.connection
+		.confirmTransaction(txSignature, "confirmed")
+		.then(async () => {
+			await withdrawInvestmentBackend({
+				investmentPda: investmentPda,
+				investorPublicKey: wallet.publicKey.toBase58(),
+				propertyPda: investment.property,
+				txSignature,
+			});
+		});
 
-	return { txSignature, investmentPda };
+	return { txSignature, investmentPda: investmentPda.toString() };
 }
 
-export async function distributeDividends(
+export async function distributeDividendsTransaction(
 	provider: AnchorProvider,
 	program: Program<CrowdEstate>,
-	propertyPda: PublicKey,
-	usdcAmount: number,
+	property: Property,
+	amount: number,
 	wallet: WalletContextState
 ) {
-	const adminPublicKey = wallet.publicKey;
+	if (!wallet.publicKey) throw new Error("Wallet not connected.");
 
-	const transaction = new Transaction();
+	const tx = new Transaction();
 
-	const adminUsdcAddress = await getAssociatedTokenAddress(
+	const adminUsdcAccount = await getAssociatedTokenAddress(
 		USDC_MINT,
-		adminPublicKey
+		wallet.publicKey
 	);
 
-	await ensureAssociatedTokenAccount(
-		provider.connection,
-		transaction,
+	const accountInfo =
+		await provider.connection.getAccountInfo(adminUsdcAccount);
+	if (!accountInfo) {
+		tx.add(
+			createAssociatedTokenAccountInstruction(
+				wallet.publicKey,
+				adminUsdcAccount,
+				wallet.publicKey,
+				USDC_MINT
+			)
+		);
+	}
+
+	const accounts = {
+		property: new PublicKey(property.publicKey),
+		propertyMint: new PublicKey(property.mint),
+		admin: wallet.publicKey,
+		adminUsdcAccount: adminUsdcAccount,
+		tokenProgram: TOKEN_PROGRAM_ID,
+		systemProgram: anchor.web3.SystemProgram.programId,
+	};
+
+	const distributeDividendsIx = await program.methods
+		.distributeDividends(new anchor.BN(amount * 1e6))
+		.accounts(accounts)
+		.instruction();
+
+	tx.add(distributeDividendsIx);
+
+	tx.recentBlockhash = (
+		await provider.connection.getLatestBlockhash()
+	).blockhash;
+	tx.feePayer = wallet.publicKey;
+
+	const signedTx = await wallet.signTransaction(tx);
+	const txSignature = await provider.connection.sendRawTransaction(
+		signedTx.serialize(),
+		{ skipPreflight: false }
+	);
+
+	await provider.connection
+		.confirmTransaction(txSignature, "confirmed")
+		.then(async () => {
+			await distributeDividendsBackend({
+				amount,
+				propertyPda: property.publicKey,
+				userPublicKey: wallet.publicKey.toBase58(),
+				txSignature,
+			});
+		});
+
+	return txSignature;
+}
+
+export async function closePropertyTransaction(
+	provider: AnchorProvider,
+	program: Program<CrowdEstate>,
+	property: Property,
+	wallet: WalletContextState
+) {
+	if (!wallet.publicKey) throw new Error("Wallet not connected.");
+
+	const propertyAccountInfo = await provider.connection.getAccountInfo(
+		new PublicKey(property.publicKey)
+	);
+	if (!propertyAccountInfo) {
+		console.log("Property account does not exist");
+		return;
+	}
+
+	const propertyData = await program.account.property.fetch(
+		new PublicKey(property.publicKey)
+	);
+	if (!propertyData || propertyData.isClosed) {
+		console.log("Property is already closed");
+		return;
+	}
+
+	const tx = new Transaction();
+
+	const adminUsdcAccount = await getAssociatedTokenAddress(
 		USDC_MINT,
-		adminPublicKey,
-		adminPublicKey
+		wallet.publicKey
+	);
+
+	const accountInfo =
+		await provider.connection.getAccountInfo(adminUsdcAccount);
+	if (!accountInfo) {
+		tx.add(
+			createAssociatedTokenAccountInstruction(
+				wallet.publicKey,
+				adminUsdcAccount,
+				wallet.publicKey,
+				USDC_MINT
+			)
+		);
+	}
+
+	const propertyVault = await getAssociatedTokenAddress(
+		new PublicKey(property.mint),
+		new PublicKey(property.publicKey),
+		true
 	);
 
 	const accounts = {
-		admin: adminPublicKey,
-		adminUsdcAccount: adminUsdcAddress,
-		property: propertyPda,
+		property: new PublicKey(property.publicKey),
+		propertyMint: new PublicKey(property.mint),
+		propertyVault: propertyVault,
+		admin: wallet.publicKey,
+		adminUsdcAccount: adminUsdcAccount,
 		tokenProgram: TOKEN_PROGRAM_ID,
-		systemProgram: SystemProgram.programId,
+		systemProgram: anchor.web3.SystemProgram.programId,
 	};
 
-	const distributeDividendsInstruction = await program.methods
-		.distributeDividends(new anchor.BN(usdcAmount * 10 ** 6))
-		.accountsPartial(accounts)
+	const closePropertyIx = await program.methods
+		.closeProperty()
+		.accounts(accounts)
 		.instruction();
 
-	transaction.add(distributeDividendsInstruction);
+	tx.add(closePropertyIx);
 
-	const { blockhash } = await provider.connection.getLatestBlockhash();
-	transaction.recentBlockhash = blockhash;
-	transaction.feePayer = adminPublicKey;
+	tx.recentBlockhash = (
+		await provider.connection.getLatestBlockhash()
+	).blockhash;
+	tx.feePayer = wallet.publicKey;
 
-	const signedTransaction = await wallet.signTransaction(transaction);
+	const signedTx = await wallet.signTransaction(tx);
 	const txSignature = await provider.connection.sendRawTransaction(
-		signedTransaction.serialize(),
-		{
-			skipPreflight: false,
-			preflightCommitment: "confirmed",
-		}
+		signedTx.serialize(),
+		{ skipPreflight: false }
 	);
 
-	await provider.connection.confirmTransaction(txSignature, "confirmed");
+	await provider.connection
+		.confirmTransaction(txSignature, "confirmed")
+		.then(async () => {
+			await closePropertyBackend({
+				propertyPda: property.publicKey,
+				userPublicKey: wallet.publicKey.toBase58(),
+				txSignature,
+			});
+		}); 
 
-	return { txSignature };
+	return txSignature;
 }

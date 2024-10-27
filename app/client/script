@@ -1,0 +1,3462 @@
+./components/PropertyCard.tsx:
+```tsx
+import { Property } from "@/utils/solana";
+import {
+	Card,
+	CardHeader,
+	CardTitle,
+	CardDescription,
+	CardContent,
+	CardFooter,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle, Coins, DollarSign, PieChart } from "lucide-react";
+import { InvestModal } from "./InvestmentModal";
+
+interface PropertyCardProps {
+	property: Property;
+	onInvestmentSuccess: (refetch?: boolean) => void;
+}
+
+export const PropertyCard = ({
+	property,
+	onInvestmentSuccess,
+}: PropertyCardProps) => {
+	return (
+		<Card
+			className={
+				property.is_closed ? "opacity-70 cursor-not-allowed" : ""
+			}
+		>
+			<CardHeader>
+				<div className="flex justify-between items-start">
+					<div>
+						<CardTitle className="text-xl mb-1">
+							{property.property_name}
+						</CardTitle>
+						<CardDescription>
+							{property.token_symbol}
+						</CardDescription>
+					</div>
+					<Badge
+						variant={
+							property.is_closed ? "destructive" : "secondary"
+						}
+					>
+						{property.is_closed ? "Closed" : "Open"}
+					</Badge>
+				</div>
+			</CardHeader>
+			<CardContent>
+				<div className="space-y-4">
+					<div>
+						<div className="flex justify-between text-sm mb-1">
+							<span>Available Tokens</span>
+						</div>
+						<Progress
+							value={
+								(property.available_tokens /
+									property.total_tokens) *
+								100
+							}
+						/>
+						<div className="flex justify-between text-sm mt-1">
+							<span>
+								{property.available_tokens.toLocaleString(
+									undefined,
+									{
+										minimumFractionDigits: 0,
+										maximumFractionDigits: 0,
+									}
+								)}
+							</span>
+							<span>
+								out of{" "}
+								{property.total_tokens.toLocaleString(
+									undefined,
+									{
+										minimumFractionDigits: 0,
+										maximumFractionDigits: 0,
+									}
+								)}
+							</span>
+						</div>
+					</div>
+
+					<Separator />
+
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="flex items-center">
+							<DollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
+							<div>
+								<p className="text-sm font-medium">
+									Token Price
+								</p>
+								<p className="text-lg">
+									${" "}
+									{property.token_price_usdc.toLocaleString(
+										undefined,
+										{
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										}
+									)}
+								</p>
+							</div>
+						</div>
+						<div className="flex items-center">
+							<Coins className="w-4 h-4 mr-2 text-muted-foreground" />
+							<div>
+								<p className="text-sm font-medium">
+									Total Tokens
+								</p>
+								<p className="text-lg">
+									{property.total_tokens.toLocaleString(
+										undefined,
+										{
+											minimumFractionDigits: 0,
+											maximumFractionDigits: 0,
+										}
+									)}{" "}
+									{property.token_symbol}
+								</p>
+							</div>
+						</div>
+					</div>
+
+					<div className="flex items-center">
+						<PieChart className="w-4 h-4 mr-2 text-muted-foreground" />
+						<div>
+							<p className="text-sm font-medium">
+								Total Dividends
+							</p>
+							<p className="text-lg">
+								${property.dividends_total.toFixed(2)}
+							</p>
+						</div>
+					</div>
+				</div>
+			</CardContent>
+			<CardFooter>
+				{property.is_closed ? (
+					<div className="bg-destructive/20 text-destructive p-3 rounded-md flex items-center w-full">
+						<AlertCircle className="w-4 h-4 mr-2" />
+						<p className="text-sm">
+							This property is no longer available for investment.
+						</p>
+					</div>
+				) : property.available_tokens == 0 ? (
+					<div className="bg-warning/20 text-warning p-3 rounded-md flex items-center w-full">
+						<AlertCircle className="w-3 h-3 mr-2 text-zinc-600" />
+						<p className="text-zinc-600 text-sm">
+							This property is fully invested.
+						</p>
+					</div>
+				) : (
+					<InvestModal
+						property={property}
+						onInvestmentSuccess={onInvestmentSuccess}
+					/>
+				)}
+			</CardFooter>
+		</Card>
+	);
+};
+```
+
+./components/CreatePropertyModal.tsx:
+```tsx
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "./LoadingSpinner";
+
+interface CreatePropertyModalProps {
+  createProperty: (e: React.FormEvent) => Promise<void>;
+  form: {
+    propertyName: string;
+    totalTokens: number;
+    pricePerToken: number;
+    tokenSymbol: string;
+  };
+  handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  isLoading: boolean;
+}
+
+export default function CreatePropertyModal({
+  createProperty,
+  form,
+  handleChange,
+  isLoading,
+}: CreatePropertyModalProps) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button>Create New Property</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create New Property</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={createProperty} className="space-y-4">
+          <div>
+            <Label htmlFor="propertyName">Property Name</Label>
+            <Input
+              id="propertyName"
+              name="propertyName"
+              value={form.propertyName}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+            <div className="flex-1">
+              <Label htmlFor="totalTokens">Total Tokens</Label>
+              <Input
+                id="totalTokens"
+                name="totalTokens"
+                type="number"
+                value={form.totalTokens}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="flex-1">
+              <Label htmlFor="pricePerToken">Price per Token (USDC)</Label>
+              <Input
+                id="pricePerToken"
+                name="pricePerToken"
+                type="number"
+                value={form.pricePerToken}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
+          <p>
+            Total Price:{" "}
+            {(form.totalTokens * form.pricePerToken).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}{" "}
+            USDC
+          </p>
+          <div>
+            <Label htmlFor="tokenSymbol">Token Symbol</Label>
+            <Input
+              id="tokenSymbol"
+              name="tokenSymbol"
+              value={form.tokenSymbol}
+              onChange={handleChange}
+              autoCapitalize="on"
+              maxLength={5}
+              minLength={3}
+              required
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="disabled:cursor-not-allowed"
+          >
+            {isLoading ? <LoadingSpinner /> : "Create Property"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+./components/ManagePropertyModal.tsx:
+```tsx
+"use client";
+
+import { useState } from "react";
+import { useAnchor } from "@/hooks/use-anchor";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { toast } from "@/hooks/use-toast";
+import { Property } from "@/utils/solana";
+import {
+	distributeDividendsTransaction,
+	closePropertyTransaction,
+} from "@/services/program";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+	DialogFooter,
+} from "@/components/ui/dialog";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { BuildingIcon, CoinsIcon } from "lucide-react";
+import {
+	AlertDialog,
+	AlertDialogTrigger,
+	AlertDialogContent,
+	AlertDialogTitle,
+	AlertDialogDescription,
+	AlertDialogCancel,
+	AlertDialogAction,
+	AlertDialogHeader,
+	AlertDialogFooter,
+} from "@/components/ui/alert-dialog";
+
+interface ManagePropertyModalProps {
+	property: Property;
+	onActionSuccess: () => void;
+}
+
+export const ManagePropertyModal: React.FC<ManagePropertyModalProps> = ({
+	property,
+	onActionSuccess,
+}) => {
+	const [dividendsAmount, setDividendsAmount] = useState<string>("");
+	const [isProcessing, setIsProcessing] = useState(false);
+
+	const { provider, program } = useAnchor();
+	const wallet = useWallet();
+
+	const handleDistributeDividends = async () => {
+		const amount = parseFloat(dividendsAmount);
+		if (!amount || amount <= 0) {
+			toast({
+				title: "Invalid Amount",
+				description: "Please enter a valid amount greater than 0.",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		if (!provider || !program || !wallet.publicKey) {
+			toast({
+				title: "Wallet Not Connected",
+				description: "Please connect your wallet to proceed.",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		setIsProcessing(true);
+
+		try {
+			await distributeDividendsTransaction(
+				provider,
+				program,
+				property,
+				amount,
+				wallet
+			);
+			toast({
+				title: "Dividends Distributed",
+				description: `Successfully distributed ${amount} USDC in dividends.`,
+			});
+			onActionSuccess();
+		} catch (error) {
+			console.error("Error distributing dividends:", error);
+			toast({
+				title: "Distribution Failed",
+				description:
+					"An error occurred while distributing dividends. Please try again.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsProcessing(false);
+		}
+	};
+
+	const handleCloseProperty = async () => {
+		if (!provider || !program || !wallet.publicKey) {
+			toast({
+				title: "Wallet Not Connected",
+				description: "Please connect your wallet to proceed.",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		setIsProcessing(true);
+
+		try {
+			await closePropertyTransaction(provider, program, property, wallet);
+			toast({
+				title: "Property Closed",
+				description: "The property has been successfully closed.",
+			});
+			onActionSuccess();
+		} catch (error) {
+			console.error("Error closing property:", error);
+			toast({
+				title: "Closure Failed",
+				description:
+					"An error occurred while closing the property. Please try again.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsProcessing(false);
+		}
+	};
+
+	return (
+		<Dialog>
+			<DialogTrigger asChild>
+				<Button className="w-full mt-4">Manage Property</Button>
+			</DialogTrigger>
+			<DialogContent className="sm:max-w-[425px]">
+				<DialogHeader>
+					<DialogTitle>Manage Property</DialogTitle>
+					<DialogDescription>
+						{property.property_name}
+					</DialogDescription>
+				</DialogHeader>
+				<div className="grid gap-6 py-4">
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center">
+								<CoinsIcon className="mr-2 h-4 w-4" />
+								Distribute Dividends
+							</CardTitle>
+							<CardDescription>
+								Distribute USDC dividends to token holders
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className="grid gap-2">
+								<Label htmlFor="dividendsAmount">
+									Amount (USDC)
+								</Label>
+								<Input
+									id="dividendsAmount"
+									type="number"
+									placeholder="Enter amount"
+									value={dividendsAmount}
+									onChange={(e) =>
+										setDividendsAmount(e.target.value)
+									}
+									disabled={isProcessing}
+								/>
+								<Button
+									onClick={handleDistributeDividends}
+									disabled={
+										isProcessing ||
+										parseFloat(dividendsAmount) <= 0
+									}
+									className="space-x-2"
+								>
+									{isProcessing ? <LoadingSpinner /> : null}
+									<span>
+										{isProcessing
+											? "Processing..."
+											: "Distribute"}
+									</span>
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+					<Separator />
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center">
+								<BuildingIcon className="mr-2 h-4 w-4" />
+								Close Property
+							</CardTitle>
+							<CardDescription>
+								Permanently close this property
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<AlertDialog>
+								<AlertDialogTrigger asChild>
+									<Button
+										variant="destructive"
+										disabled={isProcessing}
+									>
+										Close Property
+									</Button>
+								</AlertDialogTrigger>
+								<AlertDialogContent>
+									<AlertDialogHeader>
+										<AlertDialogTitle>
+											Are you absolutely sure?
+										</AlertDialogTitle>
+										<AlertDialogDescription>
+											This action cannot be undone. This
+											will permanently close the property
+											and prevent any further investments
+											or distributions.
+										</AlertDialogDescription>
+									</AlertDialogHeader>
+									<AlertDialogFooter>
+										<AlertDialogCancel>
+											Cancel
+										</AlertDialogCancel>
+										<AlertDialogAction
+											onClick={handleCloseProperty}
+										>
+											<span className="flex items-center space-x-2">
+												{isProcessing ? (
+													<LoadingSpinner />
+												) : null}
+												<span>
+													{isProcessing
+														? "Processing..."
+														: "Close Property"}
+												</span>
+											</span>
+										</AlertDialogAction>
+									</AlertDialogFooter>
+								</AlertDialogContent>
+							</AlertDialog>
+						</CardContent>
+					</Card>
+				</div>
+				<DialogFooter>
+					<DialogTrigger asChild>
+						<Button variant="outline" disabled={isProcessing}>
+							Cancel
+						</Button>
+					</DialogTrigger>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+};
+```
+
+./components/AppWalletProvider.tsx:
+```tsx
+/* eslint-disable react-hooks/exhaustive-deps */
+"use client";
+
+import React, { useMemo } from "react";
+import {
+	ConnectionProvider,
+	WalletProvider,
+} from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
+import { network } from "@/utils/solana";
+
+import "@solana/wallet-adapter-react-ui/styles.css";
+import { clusterApiUrl } from "@solana/web3.js";
+
+export default function AppWalletProvider({
+	children,
+}: {
+	children: React.ReactNode;
+}) {
+	const n = clusterApiUrl(network);
+	const wallets = useMemo(() => [new PhantomWalletAdapter()], [n]);
+
+	return (
+		<ConnectionProvider endpoint={n}>
+			<WalletProvider wallets={wallets} autoConnect={true}>
+				<WalletModalProvider>{children}</WalletModalProvider>
+			</WalletProvider>
+		</ConnectionProvider>
+	);
+}
+```
+
+./components/InvestmentCard.tsx:
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import { useAnchor } from "@/hooks/use-anchor";
+import { ellipsify, Investment, Property } from "@/utils/solana";
+import { getProperty } from "@/services/data";
+import {
+	Card,
+	CardHeader,
+	CardTitle,
+	CardDescription,
+	CardContent,
+	CardFooter,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Coins, Wallet, Building, TrendingUp } from "lucide-react";
+import { ManageInvestmentModal } from "./ManageInvestmentModal";
+
+interface InvestmentCardProps {
+	investment: Investment;
+	onManagementSuccess: (refetch?: boolean) => void;
+}
+
+export const InvestmentCard: React.FC<InvestmentCardProps> = ({
+	investment,
+	onManagementSuccess,
+}) => {
+	const { program } = useAnchor();
+	const [propertyData, setPropertyData] = useState<Property>();
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		const fetchPropertyData = async () => {
+			try {
+				const property = await getProperty(investment.property);
+				setPropertyData(property);
+			} catch (error) {
+				console.error("Error fetching property data:", error);
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		if (investment.property) {
+			fetchPropertyData();
+		}
+	}, [investment, program]);
+
+	useEffect(() => {
+		console.log("investment", investment);
+		console.log("propertyData", propertyData);
+	}, [investment, propertyData]);
+
+	const investmentValue = propertyData
+		? investment.amount * propertyData.token_price_usdc
+		: 0;
+
+	const InvestmentDetail = ({ icon, label, value }) => (
+		<div className="flex items-center space-x-2">
+			{icon}
+			<div>
+				<p className="text-sm font-medium text-muted-foreground">
+					{label}
+				</p>
+				<p className="text-lg font-semibold">{value}</p>
+			</div>
+		</div>
+	);
+
+	return (
+		<Card className="overflow-hidden">
+			<CardHeader className="pb-2">
+				<div className="flex justify-between items-start">
+					<div>
+						<CardTitle className="text-xl mb-1">
+							{loading ? (
+								<Skeleton className="h-6 w-48" />
+							) : (
+								<span className="font-bold hover:text-primary transition-colors">
+									{propertyData?.property_name}
+								</span>
+							)}
+						</CardTitle>
+						<CardDescription>
+							{loading ? (
+								<Skeleton className="h-4 w-36" />
+							) : (
+								<>
+									Investment ID:{" "}
+									{ellipsify(investment.publicKey)}
+								</>
+							)}
+						</CardDescription>
+					</div>
+					{!loading && propertyData && (
+						<Badge
+							variant={
+								propertyData.is_closed
+									? "destructive"
+									: "secondary"
+							}
+						>
+							{propertyData.is_closed ? "Closed" : "Active"}
+						</Badge>
+					)}
+				</div>
+			</CardHeader>
+			<CardContent className="pb-2">
+				{loading ? (
+					<div className="space-y-2">
+						<Skeleton className="h-4 w-full" />
+						<Skeleton className="h-4 w-full" />
+						<Skeleton className="h-4 w-full" />
+					</div>
+				) : (
+					<>
+						<div className="mb-4">
+							<div className="flex justify-between text-sm mb-1">
+								<span>Investment Progress</span>
+								<span>
+									{(
+										(investment.amount /
+											propertyData.total_tokens) *
+										100
+									).toFixed(2)}
+									%
+								</span>
+							</div>
+							<Progress
+								value={
+									(investment.amount /
+										propertyData.total_tokens) *
+									100
+								}
+							/>
+						</div>
+						<div className="grid grid-cols-2 gap-4">
+							<InvestmentDetail
+								icon={
+									<Wallet className="w-4 h-4 text-primary" />
+								}
+								label="Invested Amount"
+								value={`${investment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${propertyData?.token_symbol}`}
+							/>
+							<InvestmentDetail
+								icon={
+									<Building className="w-4 h-4 text-primary" />
+								}
+								label="Investment Value"
+								value={`$${investmentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+							/>
+							{investment.dividendsClaimed > 0 && (
+								<InvestmentDetail
+									icon={
+										<Coins className="w-4 h-4 text-primary" />
+									}
+									label="Dividends Claimed"
+									value={`$${(investment.dividendsClaimed / 1e6).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+								/>
+							)}
+							<InvestmentDetail
+								icon={
+									<TrendingUp className="w-4 h-4 text-primary" />
+								}
+								label="Token Price"
+								value={`$${propertyData?.token_price_usdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+							/>
+						</div>
+					</>
+				)}
+			</CardContent>
+			<Separator />
+			<CardFooter className="pt-4">
+				{loading ? (
+					<Skeleton className="h-10 w-full" />
+				) : (
+					investment.amount > 0 && (
+						<ManageInvestmentModal
+							investment={investment}
+							propertyData={propertyData}
+							onManagementSuccess={onManagementSuccess}
+						/>
+					)
+				)}
+			</CardFooter>
+		</Card>
+	);
+};
+```
+
+./components/Profile.tsx:
+```tsx
+import { Investment, Property } from "@/utils/solana";
+import { DollarSign, PieChart, TrendingUp, Building } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User } from "./AuthContext";
+
+interface ProfileProps {
+  user: User;
+  totalInvested?: number;
+  totalReturns?: number;
+  investments?: Investment[];
+  properties?: Property[];
+  type: "investor" | "landlord";
+}
+
+export const Profile = ({
+  user,
+  totalInvested = 0,
+  totalReturns = 0,
+  investments = [],
+  properties = [],
+  type,
+}: ProfileProps) => {
+  const totalValueManaged = properties.reduce(
+    (acc, property) => acc + property.total_tokens * property.token_price_usdc,
+    0,
+  );
+
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Your Profile</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center space-x-4 mb-4">
+          <Avatar>
+            <AvatarImage src={`https://robohash.org/${user.publicKey}`} />
+            <AvatarFallback className="bg-primary-foreground">
+              {user.publicKey?.slice(0, 5)}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-lg font-semibold">{user.name} </p>
+            <p className="text-sm text-muted-foreground capitalize text-zinc-600">
+              {user.publicKey}
+            </p>
+            <p className="text-sm text-muted-foreground capitalize text-zinc-600">
+              {type}
+            </p>
+          </div>
+        </div>
+        <div
+          className={`grid grid-cols-1 ${type == "investor" ? "md:grid-cols-3" : "md:grid-cols-2"} gap-4`}
+        >
+          {type === "investor" ? (
+            <>
+              <Card>
+                <CardContent className="flex items-center p-4">
+                  <DollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Total Invested</p>
+                    <p className="text-lg">
+                      $
+                      {totalInvested.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="flex items-center p-4">
+                  <TrendingUp className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Total Returns</p>
+                    <p className="text-lg">
+                      $
+                      {totalReturns.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="flex items-center p-4">
+                  <PieChart className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Active Investments</p>
+                    <p className="text-lg">{investments.length}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <>
+              <Card>
+                <CardContent className="flex items-center p-4">
+                  <Building className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Properties Managed</p>
+                    <p className="text-lg">{properties.length}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="flex items-center p-4">
+                  <DollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Total Value Managed</p>
+                    <p className="text-lg">
+                      ${" "}
+                      {totalValueManaged.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+```
+
+./components/LoadingSpinner.tsx:
+```tsx
+import { Loader2 } from "lucide-react";
+
+export const LoadingSpinner = ({
+  height = 64,
+  margin = 0,
+}: {
+  height?: number;
+  margin?: number;
+}) => (
+  <div className={`flex justify-center items-center h-${height} w-${height} m-${margin}`}>
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
+);
+```
+
+./components/AuthContext.tsx:
+```tsx
+"use client";
+import { getUserData, registerUser } from "@/services/user";
+import { useRouter } from "next/navigation";
+import {
+	createContext,
+	useContext,
+	useState,
+	ReactNode,
+	useEffect,
+	useCallback,
+} from "react";
+
+interface AuthContextProps {
+	isAuthenticated: boolean;
+	user: User | null;
+	login: (publicKey: string) => Promise<void>;
+	register: (publicKey: string, name: string) => Promise<void>,
+	logout: () => void;
+}
+
+export enum Role {
+	Investor = "investor",
+	Landlord = "landlord",
+}
+
+export interface User {
+	name: string;
+	publicKey: string;
+	role: Role;
+}
+
+const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+	const [isAuthenticated, setIsAuthenticated] = useState(false);
+	const [user, setUser] = useState<User | null>(null);
+	const router = useRouter();
+
+	useEffect(() => {
+		const storedUser = localStorage.getItem("user");
+		if (storedUser) {
+			const parsedUser = JSON.parse(storedUser) as User;
+			setUser(parsedUser);
+			setIsAuthenticated(true);
+		}
+	}, []);
+
+	const register = async (publicKey: string, name: string): Promise<void> => {
+		let newUser: User = {
+			name,
+			publicKey: publicKey,
+			role: Role.Investor,
+		};
+
+		try {
+			newUser = await registerUser(newUser);
+
+			setUser(newUser);
+			setIsAuthenticated(true);
+			localStorage.setItem("user", JSON.stringify(newUser));
+
+			if (newUser.role === Role.Landlord) {
+				router.push("/landlord");
+			} else {
+				router.push("/invest");
+			}
+		} catch (registerError) {
+			console.error("error registering user", registerError);
+			throw registerError;
+		}
+	};
+
+	const login = useCallback(
+		async (publicKey: string): Promise<void> => {
+			let user: User | null = null;
+
+			console.log("logging in", publicKey);
+
+			try {
+				user = await getUserData(publicKey);
+				if (!user) {
+					throw new Error("User not found");
+				}
+				console.log("existingUser", user);
+			} catch (error) {
+				console.log("user not found", error);
+				throw error;
+			}
+
+			if (user) {
+				setUser(user);
+				setIsAuthenticated(true);
+				localStorage.setItem("user", JSON.stringify(user));
+
+				if (user.role === Role.Landlord) {
+					router.push("/landlord");
+				} else {
+					router.push("/invest");
+				}
+			} else {
+				console.error("User is null after login attempt");
+			}
+		},
+		[router]
+	);
+
+	const logout = () => {
+		setIsAuthenticated(false);
+		setUser(null);
+		localStorage.removeItem("user");
+	};
+
+	useEffect(() => {
+		const user = localStorage.getItem("user");
+		if (user) {
+			setUser(JSON.parse(user));
+			setIsAuthenticated(true);
+		}
+	}, []);
+
+	return (
+		<AuthContext.Provider
+			value={{ isAuthenticated, user, login, register, logout }}
+		>
+			{children}
+		</AuthContext.Provider>
+	);
+};
+
+export const useAuth = () => {
+	const context = useContext(AuthContext);
+	if (!context) {
+		throw new Error("useAuth deve ser usado dentro de um AuthProvider");
+	}
+	return context;
+};
+```
+
+./components/ManageInvestmentModal.tsx:
+```tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useAnchor } from "@/hooks/use-anchor";
+import { SendTransactionError } from "@solana/web3.js";
+import { toast } from "@/hooks/use-toast";
+import { Investment, Property } from "@/utils/solana";
+import { withdrawInvestment } from "@/services/program";
+import { getUsdcBalance } from "@/services/usdc";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import {
+	ChartBarIcon,
+	ChartColumnIcon,
+	Coins,
+	DollarSign,
+	PieChart,
+	ArrowUpRight,
+} from "lucide-react";
+
+interface ManageInvestmentProps {
+	investment: Investment;
+	propertyData: Property;
+	onManagementSuccess: (refetch?: boolean) => void;
+}
+
+export const ManageInvestmentModal = ({
+	investment,
+	propertyData,
+	onManagementSuccess,
+}: ManageInvestmentProps) => {
+	const { program, provider } = useAnchor();
+	const wallet = useWallet();
+	const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+	const [isOpen, setIsOpen] = useState<boolean>(false);
+	const [walletUsdcBalance, setWalletUsdcBalance] = useState<number>(0);
+	const userDividends =
+		(investment.amount / propertyData.total_tokens) *
+		propertyData.dividends_total;
+
+	useEffect(() => {
+		const fetchUsdcBalance = async () => {
+			if (wallet.publicKey) {
+				try {
+					const balance = await getUsdcBalance(
+						provider,
+						wallet.publicKey
+					);
+					setWalletUsdcBalance(balance);
+				} catch (error) {
+					console.error("Error fetching USDC balance:", error);
+				}
+			}
+		};
+
+		fetchUsdcBalance();
+	}, [provider, wallet.publicKey]);
+
+	const handleWithdraw = async (e: React.FormEvent) => {
+		console.log("withdraw");
+		e.preventDefault();
+
+		if (!wallet.publicKey || !program || !provider) {
+			toast({
+				title: "Error",
+				description: "Connect your Solana wallet.",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		try {
+			setIsSubmitting(true);
+
+			const { txSignature } = await withdrawInvestment(
+				provider,
+				program,
+				investment,
+				propertyData,
+				wallet
+			);
+
+			console.log(
+				`https://solscan.io/tx/${txSignature}?cluster=${provider.connection.rpcEndpoint}`
+			);
+
+			toast({
+				title: "Success",
+				description: "Withdrawal successful!",
+				variant: "default",
+			});
+
+			setIsOpen(false);
+			onManagementSuccess(true);
+		} catch (error) {
+			if (error instanceof SendTransactionError) {
+				console.error(
+					"Transaction error:",
+					await error.getLogs(provider.connection)
+				);
+			} else {
+				console.error("Withdrawal error:", error);
+			}
+			toast({
+				title: "Error",
+				description: "Failed to withdraw. Please try again.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	const collectDividends = async () => {
+		if (!wallet.publicKey || !program || !provider) {
+			toast({
+				title: "Error",
+				description: "Connect your Solana wallet.",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		try {
+			setIsSubmitting(true);
+
+			const { txSignature } = await withdrawInvestment(
+				provider,
+				program,
+				investment,
+				propertyData,
+				wallet
+			);
+
+			console.log(
+				`https://solscan.io/tx/${txSignature}?cluster=${provider.connection.rpcEndpoint}`
+			);
+
+			toast({
+				title: "Success",
+				description: "Dividends collected!",
+				variant: "default",
+			});
+
+			setIsOpen(false);
+			onManagementSuccess(true);
+		} catch (error) {
+			if (error instanceof SendTransactionError) {
+				console.error(
+					"Transaction error:",
+					await error.getLogs(provider.connection)
+				);
+			} else {
+				console.error("Dividends collection error:", error);
+			}
+			toast({
+				title: "Error",
+				description: "Failed to collect dividends. Please try again.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	const InvestmentDetail = ({ icon, label, value }) => (
+		<Card>
+			<CardContent className="flex items-center p-4">
+				{icon}
+				<div className="ml-3">
+					<p className="text-sm font-medium text-muted-foreground">
+						{label}
+					</p>
+					<p className="text-lg font-semibold">{value}</p>
+				</div>
+			</CardContent>
+		</Card>
+	);
+
+	return (
+		<Dialog open={isOpen} onOpenChange={setIsOpen}>
+			<div className="flex flex-col sm:flex-row justify-center sm:justify-between space-y-2 sm:space-y-0 sm:space-x-2 w-full">
+				<DialogTrigger asChild>
+					<Button
+						variant="default"
+						disabled={investment.amount === 0}
+						className="w-full sm:w-auto"
+					>
+						Manage Investment
+					</Button>
+				</DialogTrigger>
+			</div>
+
+			<DialogContent className="sm:max-w-[550px]">
+				{investment && propertyData ? (
+					<>
+						<DialogHeader>
+							<DialogTitle className="text-2xl font-bold text-center">
+								Manage Investment in{" "}
+								{propertyData.property_name}
+							</DialogTitle>
+						</DialogHeader>
+
+						<div className="space-y-6 my-4">
+							<div>
+								<div className="flex justify-between text-sm mb-2">
+									<span className="font-medium">
+										Your Investment
+									</span>
+									<span className="text-muted-foreground">
+										{investment.amount.toLocaleString()} /{" "}
+										{propertyData.total_tokens.toLocaleString()}{" "}
+										{propertyData.token_symbol}
+									</span>
+								</div>
+								<Progress
+									value={
+										(investment.amount /
+											propertyData.total_tokens) *
+										100
+									}
+									className="h-2"
+								/>
+							</div>
+
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<InvestmentDetail
+									icon={
+										<DollarSign className="w-5 h-5 text-primary" />
+									}
+									label="Invested Value"
+									value={`$${(
+										investment.amount *
+										propertyData.token_price_usdc
+									).toLocaleString(undefined, {
+										minimumFractionDigits: 2,
+										maximumFractionDigits: 2,
+									})}`}
+								/>
+								<InvestmentDetail
+									icon={
+										<Coins className="w-5 h-5 text-primary" />
+									}
+									label="Token Symbol"
+									value={propertyData.token_symbol}
+								/>
+								<InvestmentDetail
+									icon={
+										<DollarSign className="w-5 h-5 text-primary" />
+									}
+									label="Price per Token"
+									value={`$${propertyData.token_price_usdc.toLocaleString(
+										undefined,
+										{
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										}
+									)}`}
+								/>
+								<InvestmentDetail
+									icon={
+										<ChartBarIcon className="w-5 h-5 text-primary" />
+									}
+									label="Total Tokens"
+									value={`${propertyData.total_tokens.toLocaleString()} ${propertyData.token_symbol}`}
+								/>
+								<InvestmentDetail
+									icon={
+										<ChartColumnIcon className="w-5 h-5 text-primary" />
+									}
+									label="Tokens Owned"
+									value={`${investment.amount.toLocaleString()} ${propertyData.token_symbol}`}
+								/>
+								<InvestmentDetail
+									icon={
+										<PieChart className="w-5 h-5 text-primary" />
+									}
+									label="Dividends Distributed"
+									value={`$${propertyData.dividends_total.toLocaleString(
+										undefined,
+										{
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										}
+									)}`}
+								/>
+								<InvestmentDetail
+									icon={
+										<PieChart className="w-5 h-5 text-primary" />
+									}
+									label="Dividends Claimed"
+									value={`$${investment.dividendsClaimed.toLocaleString(
+										undefined,
+										{
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										}
+									)}`}
+								/>
+							</div>
+						</div>
+
+						<Separator className="my-6" />
+
+						<div className="space-y-4">
+							<p className="text-sm text-center">
+								USDC Balance:{" "}
+								<span className="font-semibold">
+									$
+									{walletUsdcBalance.toLocaleString(
+										undefined,
+										{
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										}
+									)}
+								</span>
+							</p>
+
+							{propertyData.dividends_total > 0 ? (
+								<>
+									<p className="text-sm text-center">
+										You have{" "}
+										<span className="font-semibold">
+											$
+											{userDividends.toLocaleString(
+												undefined,
+												{
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												}
+											)}
+										</span>{" "}
+										in dividends to collect.
+									</p>
+									<Button
+										disabled={
+											investment.amount === 0 ||
+											isSubmitting
+										}
+										onClick={collectDividends}
+										className="w-full"
+									>
+										<Coins className="h-4 w-4" />
+										{isSubmitting
+											? "Processing..."
+											: "Collect Dividends and Withdraw"}
+									</Button>
+								</>
+							) : (
+								<Button
+									onClick={handleWithdraw}
+									disabled={isSubmitting}
+									className="w-full space-x-2"
+								>
+									{isSubmitting ? (
+										<LoadingSpinner />
+									) : (
+										<ArrowUpRight className="h-4 w-4" />
+									)}
+									{isSubmitting
+										? "Processing..."
+										: "Withdraw Investment"}
+								</Button>
+							)}
+						</div>
+					</>
+				) : (
+					<div className="flex justify-center items-center h-64">
+						<LoadingSpinner height={4} />
+					</div>
+				)}
+			</DialogContent>
+		</Dialog>
+	);
+};
+```
+
+./app/landlord/page.tsx:
+```$2
+"use client";
+
+import { useWallet } from "@solana/wallet-adapter-react";
+import { Navbar } from "@/components/Navbar";
+import { useCallback, useEffect, useState } from "react";
+import { SendTransactionError } from "@solana/web3.js";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useAnchor } from "@/hooks/use-anchor";
+import CreatePropertyModal from "@/components/CreatePropertyModal";
+import { DollarSign, Coins, ChartColumnIcon } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { Profile } from "@/components/Profile";
+import { createPropertyTransaction } from "@/services/program";
+import { getProperties } from "@/services/data";
+import { useAuth } from "@/components/AuthContext";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { useRouter } from "next/navigation";
+import { ManagePropertyModal } from "@/components/ManagePropertyModal";
+
+interface Property {
+	publicKey: string;
+	property_name: string;
+	total_tokens: number;
+	available_tokens: number;
+	token_price_usdc: number;
+	token_symbol: string;
+	admin: string;
+	mint: string;
+	bump: number;
+	dividends_total: number;
+	is_closed: boolean;
+}
+
+export default function Landloard() {
+	const { isAuthenticated, user } = useAuth();
+	const router = useRouter();
+
+	useEffect(() => {
+		if (!isAuthenticated) {
+			router.push("/login");
+		}
+	}, [isAuthenticated, router]);
+
+	const { program, provider } = useAnchor();
+	const [properties, setProperties] = useState<Property[]>([]);
+	const [form, setForm] = useState({
+		propertyName: "San Francisco Property",
+		totalTokens: 1_000,
+		pricePerToken: 1_000,
+		tokenSymbol: "SFP",
+	});
+	const [isLoading, setIsLoading] = useState(false);
+
+	const wallet = useWallet();
+
+	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const { name, value } = e.target;
+		setForm({
+			...form,
+			[name]: name === "tokenSymbol" ? value.toUpperCase() : value,
+		});
+	};
+
+	const fetchProperties = useCallback(async () => {
+		try {
+			const propertiesData = await getProperties();
+			console.log("Fetched properties:", propertiesData);
+			setProperties(propertiesData);
+		} catch (error) {
+			console.error("Error fetching properties:", error);
+		}
+	}, []);
+
+	useEffect(() => {
+		if (program && provider) {
+			fetchProperties();
+		}
+	}, [fetchProperties, program, provider]);
+
+	const createProperty = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setIsLoading(true);
+
+		if (!wallet.publicKey || !wallet.signTransaction) {
+			toast({
+				title: "Error",
+				description: "Wallet not connected.",
+				variant: "destructive",
+			});
+			setIsLoading(false);
+			return;
+		}
+
+		try {
+			console.log("User PublicKey:", wallet.publicKey.toBase58());
+			const { txSignature, propertyPda } =
+				await createPropertyTransaction(
+					provider,
+					program,
+					form,
+					wallet
+				);
+
+			console.log(
+				`https://solscan.io/tx/${txSignature}?cluster=${provider.connection.rpcEndpoint}`
+			);
+
+			toast({
+				title: "Success",
+				description:
+					"Property created successfully: " + propertyPda.toBase58(),
+				variant: "default",
+			});
+
+			setForm({
+				propertyName: "",
+				totalTokens: 0,
+				pricePerToken: 0,
+				tokenSymbol: "",
+			});
+
+			fetchProperties();
+		} catch (error) {
+			if (error instanceof SendTransactionError) {
+				console.error(
+					"Transaction error:",
+					await error.getLogs(provider.connection)
+				);
+				toast({
+					title: "Error",
+					description:
+						"Failed to create property. Please try again later.",
+					variant: "destructive",
+				});
+				return;
+			}
+			toast({
+				title: "Error",
+				description:
+					"Failed to create property. Please try again later.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handleActionSuccess = () => {
+		fetchProperties();
+	};
+
+	if (!isAuthenticated) {
+		return (
+			<div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+				<LoadingSpinner />
+			</div>
+		);
+	}
+	return (
+		<div className="min-h-screen bg-background text-foreground">
+			<Navbar />
+			<main className="container mx-auto p-6">
+				<Profile user={user} properties={properties} type="landlord" />
+				<div className="flex justify-between items-center mb-6">
+					<h2 className="text-3xl font-bold">Your Properties</h2>
+					<CreatePropertyModal
+						createProperty={createProperty}
+						form={form}
+						handleChange={handleChange}
+						isLoading={isLoading}
+					/>
+				</div>
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					{properties.length > 0 ? (
+						properties.map((property, index) => (
+							<Card key={index} className="flex flex-col">
+								<CardHeader>
+									<CardTitle className="flex justify-between items-center">
+										{property.property_name}
+										<Badge
+											variant={
+												property.is_closed
+													? "destructive"
+													: "secondary"
+											}
+										>
+											{property.is_closed
+												? "Closed"
+												: "Open"}
+										</Badge>
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="flex flex-col flex-grow justify-between">
+									<>
+										<div>
+											<Label className="text-sm font-medium">
+												Available Tokens
+											</Label>
+											<Progress
+												value={
+													property.total_tokens
+														? (property.available_tokens /
+																property.total_tokens) *
+															100
+														: 0
+												}
+												className="mt-2"
+											/>
+											<div className="flex justify-between text-sm mt-1">
+												<span>
+													{property.available_tokens.toLocaleString(
+														undefined,
+														{
+															minimumFractionDigits: 0,
+															maximumFractionDigits: 0,
+														}
+													)}
+												</span>
+												<span>
+													out of{" "}
+													{property.total_tokens.toLocaleString(
+														undefined,
+														{
+															minimumFractionDigits: 0,
+															maximumFractionDigits: 0,
+														}
+													)}
+												</span>
+											</div>
+										</div>
+
+										<Separator className="my-4" />
+
+										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+											{property.token_symbol && (
+												<div className="flex items-center">
+													<Coins className="w-4 h-4 mr-2 text-muted-foreground" />
+													<div>
+														<p className="text-sm font-medium">
+															Token Symbol
+														</p>
+														<p className="text-lg">
+															{
+																property.token_symbol
+															}
+														</p>
+													</div>
+												</div>
+											)}
+											{property.total_tokens && (
+												<div className="flex items-center">
+													<DollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
+													<div>
+														<p className="text-sm font-medium">
+															Total Tokens
+														</p>
+														<p className="text-lg">
+															{property.total_tokens.toLocaleString(
+																undefined,
+																{
+																	minimumFractionDigits: 0,
+																	maximumFractionDigits: 0,
+																}
+															)}{" "}
+															{
+																property.token_symbol
+															}
+														</p>
+													</div>
+												</div>
+											)}
+											{property.available_tokens && (
+												<div className="flex items-center">
+													<ChartColumnIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+													<div>
+														<p className="text-sm font-medium">
+															Available Tokens
+														</p>
+														<p className="text-lg">
+															{property.available_tokens.toLocaleString(
+																undefined,
+																{
+																	minimumFractionDigits: 0,
+																	maximumFractionDigits: 0,
+																}
+															)}{" "}
+															{
+																property.token_symbol
+															}
+														</p>
+													</div>
+												</div>
+											)}
+											{property.token_price_usdc && (
+												<div className="flex items-center">
+													<DollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
+													<div>
+														<p className="text-sm font-medium">
+															Price per $
+															{
+																property.token_symbol
+															}
+														</p>
+														<p className="text-lg">
+															${" "}
+															{property.token_price_usdc.toLocaleString(
+																undefined,
+																{
+																	minimumFractionDigits: 2,
+																	maximumFractionDigits: 2,
+																}
+															)}
+														</p>
+													</div>
+												</div>
+											)}
+											{property.dividends_total > 0 && (
+												<div className="flex items-center">
+													<Coins className="w-4 h-4 mr-2 text-muted-foreground" />
+													<div>
+														<p className="text-sm font-medium">
+															Dividends Total
+														</p>
+														<p className="text-lg">
+															${" "}
+															{(
+																property.dividends_total
+															).toLocaleString(
+																undefined,
+																{
+																	minimumFractionDigits: 2,
+																	maximumFractionDigits: 2,
+																}
+															)}
+														</p>
+													</div>
+												</div>
+											)}
+										</div>
+									</>
+
+									<ManagePropertyModal
+										property={property}
+										onActionSuccess={handleActionSuccess}
+									/>
+								</CardContent>
+							</Card>
+						))
+					) : (
+						<p className="text-muted-foreground col-span-3">
+							No properties found.
+						</p>
+					)}
+				</div>
+			</main>
+		</div>
+	);
+}
+```
+
+./app/layout.tsx:
+```$2
+import type { Metadata } from "next";
+import localFont from "next/font/local";
+import "./globals.css";
+import "@solana/wallet-adapter-react-ui/styles.css";
+import AppWalletProvider from "@/components/AppWalletProvider";
+import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/components/AuthContext";
+
+const geistSans = localFont({
+  src: "./fonts/GeistVF.woff",
+  variable: "--font-geist-sans",
+  weight: "100 900",
+});
+const geistMono = localFont({
+  src: "./fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+});
+
+export const metadata: Metadata = {
+  title: "Crowd Estate",
+  description:
+    "Crowd Estate is a platform for investing in real estate using Solana blockchain.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <AppWalletProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </AppWalletProvider>
+        <Toaster />
+      </body>
+    </html>
+  );
+}
+```
+
+./app/error.tsx:
+```$2
+"use client";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+
+export default function Error() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <Card className="max-w-md w-full">
+        <CardHeader>
+          <CardTitle className="text-center">404 - Page Not Found</CardTitle>
+        </CardHeader>
+      </Card>
+    </div>
+  );
+}
+```
+
+./app/page.tsx:
+```$2
+"use client";
+
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/AuthContext";
+import { toast } from "@/hooks/use-toast";
+
+export default function Home() {
+  const { isAuthenticated, user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logout",
+      description: "Logout bem-sucedido!",
+      variant: "default",
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+      <main className="p-6 max-w-4xl mx-auto text-center">
+        <h1 className="text-6xl font-bold mb-8">Welcome to Crowd Estate</h1>
+        <p className="text-lg mb-6">
+          Crowd Estate is a platform for investing in real estate using Solana
+          blockchain.
+        </p>
+        <p className="text-lg mb-6">
+          We provide a marketplace for buying and selling real estate tokens.
+          Our platform allows you to invest in real estate properties by
+          purchasing tokens that represent ownership of the property.
+        </p>
+        <p className="text-lg mb-8">
+          You can also earn passive income by staking your tokens and receiving
+          dividends from the property&apos;s revenue.
+        </p>
+        {!isAuthenticated ? (
+          <Button asChild className="mb-8">
+            <Link href="/login">Login</Link>
+          </Button>
+        ) : (
+          <>
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">Welcome, {user.name}!</h2>
+              <p className="text-lg mb-6">
+                Your wallet address is: {user.publicKey}
+              </p>
+
+              <Button onClick={handleLogout} variant="destructive">
+                Logout
+              </Button>
+            </div>
+            <div className="flex justify-center space-x-4">
+              {user.role === "landlord" ? (
+                <Button asChild variant="secondary" className="text-lg">
+                  <Link href="/landlord">Manage Properties</Link>
+                </Button>
+              ) : (
+                <Button asChild className="text-lg">
+                  <Link href="/invest">Invest in Properties</Link>
+                </Button>
+              )}
+            </div>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+```
+
+./app/login/page.tsx:
+```$2
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useAuth } from "@/components/AuthContext";
+import { PhantomWalletName } from "@solana/wallet-adapter-wallets";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+	Card,
+	CardContent,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { LogIn, UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+
+export default function LoginPage() {
+	const { connect, select, publicKey } = useWallet();
+	const { isAuthenticated, login, register, user } = useAuth();
+	const router = useRouter();
+
+	const [isLoading, setIsLoading] = useState(false);
+	const [showRegisterModal, setShowRegisterModal] = useState(false);
+	const [name, setName] = useState("");
+	const [cancelLogin, setCancelLogin] = useState(false);
+
+	useEffect(() => {
+		if (isAuthenticated && user) {
+			if (user.role === "investor") {
+				router.push("/invest");
+			} else if (user.role === "landlord") {
+				router.push("/landlord");
+			} else {
+				router.push("/");
+			}
+		}
+	}, [isAuthenticated, router, user]);
+
+	useEffect(() => {
+		if (!showRegisterModal) {
+			setCancelLogin(true);
+			setIsLoading(false);
+		}
+	}, [showRegisterModal]);
+
+	const handleLogin = useCallback(async () => {
+		setIsLoading(true);
+		setCancelLogin(false);
+
+		try {
+			select(PhantomWalletName);
+			await connect();
+
+			if (!publicKey) {
+				toast({
+					title: "Error",
+					description: "Wallet not connected.",
+					variant: "destructive",
+				});
+				setIsLoading(false);
+				return;
+			}
+
+			try {
+				await login(publicKey.toBase58());
+
+				if (cancelLogin) return;
+
+				toast({
+					title: "Success",
+					description: "Login successful!",
+					variant: "default",
+				});
+			} catch (error) {
+				if (cancelLogin) return;
+
+				if (error.message === "User not found") {
+					console.log("User not found, showing register modal");
+					setShowRegisterModal(true);
+				} else {
+					console.error("Error during login:", error);
+					toast({
+						title: "Error",
+						description: "Failed to login. Please try again later.",
+						variant: "destructive",
+					});
+				}
+			}
+		} catch (error) {
+			if (cancelLogin) return;
+
+			console.error("Error during login:", error);
+			toast({
+				title: "Error",
+				description: "Failed to login. Please try again later.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsLoading(false);
+		}
+	}, [cancelLogin, connect, login, publicKey, select]);
+
+	const handleRegister = useCallback(async () => {
+		if (!name) {
+			toast({
+				title: "Error",
+				description: "Please enter your name.",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		setIsLoading(true);
+
+		try {
+			await register(publicKey?.toBase58(), name);
+
+			toast({
+				title: "Success",
+				description: "Registration successful! You are now logged in.",
+				variant: "default",
+			});
+
+			setShowRegisterModal(false);
+		} catch (error) {
+			console.error("Error during registration:", error);
+			toast({
+				title: "Error",
+				description: "Failed to register. Please try again later.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsLoading(false);
+		}
+	}, [name, publicKey, register]);
+
+	return (
+		<div className="min-h-screen bg-gradient-to-b from-primary/20 to-background flex items-center justify-center p-4">
+			<Card className="w-full max-w-md">
+				<CardHeader>
+					<CardTitle className="text-3xl font-bold text-center">
+						Welcome to CrowdEstate
+					</CardTitle>
+				</CardHeader>
+				<CardContent className="flex flex-col justify-center space-y-4">
+					<p className="text-center text-muted-foreground">
+						Login to access your investments and more.
+					</p>
+
+					<WalletMultiButton
+						className="w-full rounded-lg"
+						style={{
+							display: "flex",
+							justifyContent: "center",
+							width: "100%",
+						}}
+					/>
+
+					<Button
+						onClick={handleLogin}
+						disabled={isLoading}
+						className="w-full space-x-2"
+					>
+						{isLoading ? (
+							<LoadingSpinner />
+						) : (
+							<LogIn className="mr-2 h-4 w-4" />
+						)}
+						{isLoading ? "Connecting..." : "Connect"}
+					</Button>
+				</CardContent>
+				<CardFooter className="flex justify-center">
+					<p className="text-sm text-muted-foreground">
+						New to CrowdEstate? Connect your wallet to get started.
+					</p>
+				</CardFooter>
+			</Card>
+
+			<Dialog
+				open={showRegisterModal}
+				onOpenChange={(open) => {
+					console.log("Dialog open state changed:", open);
+					if (!open) {
+						setShowRegisterModal(false);
+					}
+				}}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Complete Your Registration</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-4 py-4">
+						<p className="text-sm text-muted-foreground">
+							Please enter your name to complete the registration
+							process.
+						</p>
+						<Input
+							placeholder="Enter your name"
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+						/>
+					</div>
+
+					<DialogFooter>
+						<Button
+							onClick={handleRegister}
+							disabled={!name || isLoading}
+							className="w-full space-x-2"
+						>
+							{isLoading ? (
+								<LoadingSpinner />
+							) : (
+								<UserPlus className="mr-2 h-4 w-4" />
+							)}
+							{isLoading
+								? "Registering..."
+								: "Complete Registration"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		</div>
+	);
+}
+```
+
+./app/invest/page.tsx:
+```$2
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { Investment, Property } from "@/utils/solana";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { Navbar } from "@/components/Navbar";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { toast } from "@/hooks/use-toast";
+import { Building, Wallet } from "lucide-react";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { PropertyCard } from "@/components/PropertyCard";
+import { useAnchor } from "@/hooks/use-anchor";
+import { InvestmentCard } from "@/components/InvestmentCard";
+import { Profile } from "@/components/Profile";
+import { getProperties, getInvestments } from "@/services/data";
+import { useAuth } from "@/components/AuthContext";
+import { useRouter } from "next/navigation";
+
+export default function Invest() {
+	const { isAuthenticated, user } = useAuth();
+	const router = useRouter();
+
+	useEffect(() => {
+		if (!isAuthenticated) {
+			router.push("/login");
+		}
+	}, [isAuthenticated, router]);
+
+	const { program } = useAnchor();
+	const wallet = useWallet();
+
+	const [properties, setProperties] = useState<Property[]>([]);
+	const [investments, setInvestments] = useState<Investment[]>([]);
+	const [isLoadingProperties, setIsLoadingProperties] = useState(false);
+	const [isLoadingInvestments, setIsLoadingInvestments] = useState(false);
+	const [totalInvested, setTotalInvested] = useState(0);
+	const [totalReturns, setTotalReturns] = useState(0);
+
+	const fetchProperties = useCallback(async () => {
+		try {
+			setIsLoadingProperties(true);
+			const properties = await getProperties();
+			console.log("properties", properties);
+
+			setProperties(properties);
+		} catch (error) {
+			console.error("Error fetching properties:", error);
+			toast({
+				title: "Error",
+				description:
+					"Failed to fetch properties. Please try again later.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsLoadingProperties(false);
+		}
+	}, []);
+
+	const fetchInvestments = useCallback(async () => {
+		if (!wallet.publicKey) {
+			return;
+		}
+
+		try {
+			setIsLoadingInvestments(true);
+
+			const { investmentsData, invested, returns } = await getInvestments(
+				wallet.publicKey.toBase58()
+			);
+
+			setInvestments(investmentsData);
+			setTotalInvested(invested);
+			setTotalReturns(returns);
+		} catch (error) {
+			console.error("Error fetching investments:", error);
+			toast({
+				title: "Error",
+				description:
+					"Failed to fetch your investments. Please try again later.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsLoadingInvestments(false);
+		}
+	}, [wallet]);
+
+	useEffect(() => {
+		if (program && wallet.publicKey) {
+			fetchProperties();
+			fetchInvestments();
+		}
+	}, [program, wallet]);
+
+	const handleSuccess = useCallback(() => {
+		fetchInvestments();
+		fetchProperties();
+	}, [fetchInvestments, fetchProperties]);
+
+	if (!isAuthenticated) {
+		return (
+			<div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+				<LoadingSpinner />
+			</div>
+		);
+	}
+	return (
+		<div className="min-h-screen bg-background text-foreground">
+			<Navbar />
+
+			<main className="container mx-auto p-6">
+				<Profile
+					user={user}
+					totalInvested={totalInvested}
+					totalReturns={totalReturns}
+					investments={investments}
+					type="investor"
+				/>
+
+				<Tabs defaultValue="properties" className="mb-6">
+					<TabsList className="mb-8">
+						<TabsTrigger value="properties">
+							<Building className="w-4 h-4 mr-2" />
+							Properties
+						</TabsTrigger>
+						<TabsTrigger value="investments">
+							<Wallet className="w-4 h-4 mr-2" />
+							Your Investments
+						</TabsTrigger>
+					</TabsList>
+
+					<TabsContent value="properties">
+						<div className="flex justify-between items-center mb-6">
+							<h2 className="text-3xl font-bold">
+								Explore Properties
+							</h2>
+							<div className="flex space-x-2">
+								<Button variant="outline">Filters</Button>
+								<Button variant="outline">Sort</Button>
+							</div>
+						</div>
+
+						{isLoadingProperties ? (
+							<LoadingSpinner />
+						) : properties.length > 0 ? (
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+								{properties.map((property) => (
+									<PropertyCard
+										onInvestmentSuccess={handleSuccess}
+										key={property.publicKey}
+										property={property}
+									/>
+								))}
+							</div>
+						) : (
+							<p className="text-muted-foreground">
+								No properties found.
+							</p>
+						)}
+					</TabsContent>
+
+					<TabsContent value="investments">
+						<div className="flex justify-between items-center mb-6">
+							<h2 className="text-3xl font-bold">
+								Your Investments
+							</h2>
+							<div className="flex space-x-2">
+								<Button variant="outline">Filters</Button>
+								<Button variant="outline">Sort</Button>
+							</div>
+						</div>
+
+						{isLoadingInvestments ? (
+							<LoadingSpinner />
+						) : investments.length > 0 ? (
+							<div className="flex flex-wrap gap-6">
+								{investments.map((investment) => (
+									<div
+										key={investment.publicKey}
+										className="w-full md:w-1/2"
+									>
+										<InvestmentCard
+											key={investment.publicKey}
+											onManagementSuccess={handleSuccess}
+											investment={investment}
+										/>
+									</div>
+								))}
+							</div>
+						) : (
+							<p className="text-muted-foreground">
+								You have no investments.
+							</p>
+						)}
+					</TabsContent>
+				</Tabs>
+			</main>
+		</div>
+	);
+}
+```
+
+./services/data.ts:
+```$2
+import { axios } from "@/utils/axios";
+import { Investment, Property } from "@/utils/solana";
+import { PublicKey } from "@solana/web3.js";
+
+export enum Filters {
+	ALL = "ALL",
+	OPEN = "OPEN",
+	CLOSED = "CLOSED",
+	USER = "USER",
+}
+
+export const getProperties = async (
+	userPublicKey?: string,
+	filters: Filters[] = [Filters.ALL]
+): Promise<Property[]> => {
+	try {
+		const response = await axios.post("/program/properties", {
+			filters,
+			userPublicKey,
+		});
+
+		const properties: Property[] = response.data.properties;
+
+		return properties;
+	} catch (error) {
+		console.error("Error fetching properties:", error);
+		throw error;
+	}
+};
+
+export const getProperty = async (propertyPda: string): Promise<Property> => {
+	try {
+		const response = await axios.get(`/program/properties/${propertyPda}`);
+
+		const property: Property = response.data.property;
+
+		return property;
+	} catch (error) {
+		console.error("Error fetching properties:", error);
+		throw error;
+	}
+};
+
+export const getInvestments = async (
+	publicKey: string
+): Promise<{
+	investmentsData: Investment[];
+	invested: number;
+	returns: number;
+}> => {
+	try {
+		const response = await axios.post("/program/investments", {
+			publicKey,
+		});
+
+		const { investmentsData, invested, returns } = response.data;
+
+		return { investmentsData, invested, returns };
+	} catch (error) {
+		console.error("Error fetching investments:", error);
+		throw error;
+	}
+};
+
+export const getInvestment = async (
+	investmentPda: string
+): Promise<Investment> => {
+	try {
+		const response = await axios.get(
+			`/program/investments/${investmentPda}`
+		);
+
+		const investment: Investment = response.data.investment;
+
+		return investment;
+	} catch (error) {
+		console.error("Error fetching investments:", error);
+		throw error;
+	}
+};
+
+export const fetchInvestmentPDA = async (
+	programId: PublicKey,
+	userPublicKey: string,
+	propertyPda: string
+): Promise<{
+	pda: PublicKey | null;
+	exists: boolean;
+}> => {
+	if (!userPublicKey || !propertyPda) {
+		return {
+			pda: null,
+			exists: false,
+		};
+	}
+
+	console.log("userPublicKey", userPublicKey);
+	console.log("propertyPda", propertyPda);
+	console.log("programId", programId.toBase58());
+
+	const [investmentPda] = PublicKey.findProgramAddressSync(
+		[
+			Buffer.from("investment"),
+			Buffer.from(userPublicKey),
+			new PublicKey(propertyPda).toBuffer(),
+		],
+		programId
+	);
+
+	const investment = await getInvestment(investmentPda.toBase58());
+
+	return {
+		pda: investmentPda,
+		exists: !!investment,
+	};
+};
+```
+
+./services/program.ts:
+```$2
+import * as anchor from "@coral-xyz/anchor";
+import { CrowdEstate } from "@/idl/types/crowd_estate";
+import {
+	ensureAssociatedTokenAccount,
+	Investment,
+	Property,
+	USDC_MINT,
+} from "@/utils/solana";
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import {
+	ASSOCIATED_TOKEN_PROGRAM_ID,
+	createAssociatedTokenAccountInstruction,
+	createInitializeMintInstruction,
+	getAssociatedTokenAddress,
+	TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+import {
+	Keypair,
+	PublicKey,
+	SystemProgram,
+	Transaction,
+} from "@solana/web3.js";
+import { WalletContextState } from "@solana/wallet-adapter-react";
+import {
+	createInvestmentBackend,
+	createPropertyBackend,
+	closePropertyBackend,
+	withdrawInvestmentBackend,
+	distributeDividendsBackend,
+} from "./user";
+
+export async function createPropertyTransaction(
+	provider: AnchorProvider,
+	program: Program<CrowdEstate>,
+	form: {
+		propertyName: string;
+		totalTokens: number;
+		pricePerToken: number;
+		tokenSymbol: string;
+	},
+	wallet: WalletContextState
+) {
+	const adminPublicKey = wallet.publicKey;
+
+	const transaction = new Transaction();
+	const instructions = [];
+
+	const [propertyPda, bump] = PublicKey.findProgramAddressSync(
+		[
+			Buffer.from("property"),
+			adminPublicKey.toBuffer(),
+			Buffer.from(form.propertyName),
+		],
+		program.programId
+	);
+	console.log("Program ID", program.programId.toBase58());
+	console.log("Property PDA", propertyPda.toBase58());
+
+	const propertyAccountInfo =
+		await provider.connection.getAccountInfo(propertyPda);
+	if (propertyAccountInfo) {
+		console.log("Property PDA already exists");
+
+		const propertyData = await program.account.property.fetch(propertyPda);
+		console.log("Property name", propertyData.propertyName.toString());
+		if (
+			propertyData &&
+			propertyData.propertyName.toString() == form.propertyName
+		) {
+			console.log("Property PDA is valid, skipping creation");
+			return {
+				txSignature: null,
+				propertyPda,
+			};
+		} else {
+			throw new Error("Property PDA exists but contains invalid data");
+		}
+	}
+
+	const propertyMint = Keypair.generate();
+	instructions.push(
+		SystemProgram.createAccount({
+			fromPubkey: adminPublicKey,
+			newAccountPubkey: propertyMint.publicKey,
+			space: 82,
+			lamports:
+				await provider.connection.getMinimumBalanceForRentExemption(82),
+			programId: TOKEN_PROGRAM_ID,
+		}),
+		createInitializeMintInstruction(
+			propertyMint.publicKey,
+			0,
+			propertyPda,
+			null
+		)
+	);
+	console.log("Property Mint", propertyMint.publicKey.toBase58());
+
+	const accounts = {
+		admin: adminPublicKey,
+		property: propertyPda,
+		propertyMint: propertyMint.publicKey,
+		usdcMint: USDC_MINT,
+		tokenProgram: TOKEN_PROGRAM_ID,
+		associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+		systemProgram: SystemProgram.programId,
+	};
+	console.log("Accounts", accounts);
+
+	const createPropertyInstruction = await program.methods
+		.createProperty(
+			form.propertyName,
+			new anchor.BN(form.totalTokens),
+			new anchor.BN(form.pricePerToken * 10 ** 6),
+			form.tokenSymbol,
+			bump
+		)
+		.accountsPartial({
+			admin: adminPublicKey,
+			propertyMint: propertyMint.publicKey,
+			associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+			property: propertyPda,
+			propertyVault: await getAssociatedTokenAddress(
+				propertyMint.publicKey,
+				propertyPda,
+				true
+			),
+			tokenProgram: TOKEN_PROGRAM_ID,
+		})
+		.instruction();
+	console.log("Create Property Instruction", createPropertyInstruction);
+
+	instructions.push(createPropertyInstruction);
+
+	transaction.add(...instructions);
+	transaction.recentBlockhash = (
+		await provider.connection.getLatestBlockhash()
+	).blockhash;
+	transaction.feePayer = adminPublicKey;
+	transaction.partialSign(propertyMint);
+
+	console.log("Transaction", {
+		feePayer: transaction.feePayer.toBase58(),
+		signatures: transaction.signatures.map((s) => s.publicKey.toBase58()),
+	});
+
+	const signedTransaction = await wallet.signTransaction(transaction);
+	console.log("Transaction signed");
+
+	const txSignature = await provider.connection.sendRawTransaction(
+		signedTransaction.serialize(),
+		{
+			skipPreflight: false,
+			preflightCommitment: "confirmed",
+		}
+	);
+
+	await provider.connection
+		.confirmTransaction(txSignature, "confirmed")
+		.then(async () => {
+			await createPropertyBackend({
+				propertyPda: propertyPda.toBase58(),
+				userPublicKey: adminPublicKey.toBase58(),
+				txSignature,
+			});
+		})
+		.catch((e) => {
+			console.error("Error creating property", e);
+		});
+
+	return {
+		txSignature,
+		propertyPda,
+	};
+}
+
+export async function investInPropertyTransaction(
+	provider: AnchorProvider,
+	program: Program<CrowdEstate>,
+	property: Property,
+	usdcAmount: number,
+	wallet: WalletContextState
+) {
+	const [investmentPda] = PublicKey.findProgramAddressSync(
+		[
+			Buffer.from("investment"),
+			wallet.publicKey.toBuffer(),
+			new PublicKey(property.publicKey).toBuffer(),
+		],
+		program.programId
+	);
+
+	const investmentAccountInfo =
+		await provider.connection.getAccountInfo(investmentPda);
+	if (investmentAccountInfo) {
+		console.log("Investment PDA already exists");
+
+		const investmentData =
+			await program.account.investor.fetch(investmentPda);
+		console.log("Investment PDA data", investmentData);
+		if (
+			investmentData &&
+			investmentData.investor.toBase58() == wallet.publicKey.toBase58()
+		) {
+			console.log("Investment PDA is valid, skipping creation");
+			return {
+				txSignature: null,
+				investment: investmentPda,
+			};
+		} else {
+			throw new Error("Investment PDA exists but contains invalid data");
+		}
+	}
+
+	const tx = new Transaction();
+
+	const investorUsdcAta = await ensureAssociatedTokenAccount(
+		provider.connection,
+		tx,
+		USDC_MINT,
+		wallet.publicKey,
+		wallet.publicKey
+	);
+
+	const investorPropertyAta = await ensureAssociatedTokenAccount(
+		provider.connection,
+		tx,
+		new PublicKey(property.mint),
+		wallet.publicKey,
+		wallet.publicKey
+	);
+
+	const propertyUsdcAta = await ensureAssociatedTokenAccount(
+		provider.connection,
+		tx,
+		USDC_MINT,
+		new PublicKey(property.publicKey),
+		wallet.publicKey,
+		true
+	);
+
+	const propertyVaultAta = await ensureAssociatedTokenAccount(
+		provider.connection,
+		tx,
+		new PublicKey(property.mint),
+		new PublicKey(property.publicKey),
+		wallet.publicKey,
+		true
+	);
+
+	const accounts = {
+		property: new PublicKey(property.publicKey),
+		propertyMint: new PublicKey(property.mint),
+		investor: wallet.publicKey,
+		investmentAccount: investmentPda,
+		propertyUsdcAccount: propertyUsdcAta,
+		investorUsdcAccount: investorUsdcAta,
+		investorPropertyTokenAccount: investorPropertyAta,
+		propertyVault: propertyVaultAta,
+		tokenProgram: TOKEN_PROGRAM_ID,
+		systemProgram: SystemProgram.programId,
+	};
+
+	const usdcAmountBN = new anchor.BN(
+		(BigInt(usdcAmount) * BigInt(1e6)).toString()
+	);
+
+	console.log("Invest in property", {
+		usdcAmount,
+		usdcAmountBN,
+	});
+	const investIx = await program.methods
+		.investInProperty(usdcAmountBN)
+		.accountsStrict(accounts)
+		.instruction();
+	tx.add(investIx);
+
+	const { blockhash } = await provider.connection.getLatestBlockhash();
+	tx.recentBlockhash = blockhash;
+	tx.feePayer = wallet.publicKey;
+
+	const signedTx = await wallet.signTransaction(tx);
+	const txSignature = await provider.connection.sendRawTransaction(
+		signedTx.serialize()
+	);
+
+	await provider.connection
+		.confirmTransaction(txSignature, "confirmed")
+		.then(async () => {
+			console.log("Investment transaction sent", txSignature);
+			await createInvestmentBackend({
+				investmentPda: investmentPda.toBase58(),
+				investorPublicKey: wallet.publicKey.toBase58(),
+				propertyPda: property.publicKey,
+				txSignature,
+			});
+		});
+
+	return { txSignature, investment: investmentPda };
+}
+
+export async function withdrawInvestment(
+	provider: AnchorProvider,
+	program: Program<CrowdEstate>,
+	investment: Investment,
+	propertyData: Property,
+	wallet: WalletContextState
+): Promise<{ txSignature: string; investmentPda: string }> {
+	const investmentPda = investment.publicKey;
+	const tx = new Transaction();
+	const investorUsdcAta = await ensureAssociatedTokenAccount(
+		provider.connection,
+		tx,
+		USDC_MINT,
+		wallet.publicKey,
+		wallet.publicKey
+	);
+	const propertyUsdcAta = await ensureAssociatedTokenAccount(
+		provider.connection,
+		tx,
+		USDC_MINT,
+		new PublicKey(investment.property),
+		wallet.publicKey,
+		true
+	);
+	const adminPublicKey = wallet.publicKey;
+	const adminUsdcAddress = await getAssociatedTokenAddress(
+		USDC_MINT,
+		adminPublicKey
+	);
+	await ensureAssociatedTokenAccount(
+		provider.connection,
+		tx,
+		USDC_MINT,
+		adminPublicKey,
+		adminPublicKey
+	);
+	const accounts = {
+		property: new PublicKey(investment.property),
+		propertyMint: new PublicKey(propertyData.mint),
+		investor: wallet.publicKey,
+		investmentAccount: investmentPda,
+		propertyUsdcAccount: propertyUsdcAta,
+		investorUsdcAccount: investorUsdcAta,
+		adminUsdcAccount: adminUsdcAddress,
+		tokenProgram: TOKEN_PROGRAM_ID,
+		systemProgram: SystemProgram.programId,
+	};
+	const withdrawIx = await program.methods
+		.withdrawInvestment()
+		.accounts(accounts)
+		.instruction();
+	tx.add(withdrawIx);
+	tx.recentBlockhash = (
+		await provider.connection.getLatestBlockhash()
+	).blockhash;
+	tx.feePayer = wallet.publicKey;
+
+	const signedTx = await wallet.signTransaction(tx);
+	const txSignature = await provider.connection.sendRawTransaction(
+		signedTx.serialize(),
+		{
+			skipPreflight: false,
+			preflightCommitment: "confirmed",
+		}
+	);
+	await provider.connection
+		.confirmTransaction(txSignature, "confirmed")
+		.then(async () => {
+			await withdrawInvestmentBackend({
+				investmentPda: investmentPda,
+				investorPublicKey: wallet.publicKey.toBase58(),
+				propertyPda: investment.property,
+				txSignature,
+			});
+		});
+
+	return { txSignature, investmentPda: investmentPda.toString() };
+}
+
+export async function distributeDividendsTransaction(
+	provider: AnchorProvider,
+	program: Program<CrowdEstate>,
+	property: Property,
+	amount: number,
+	wallet: WalletContextState
+) {
+	if (!wallet.publicKey) throw new Error("Wallet not connected.");
+
+	const tx = new Transaction();
+
+	const adminUsdcAccount = await getAssociatedTokenAddress(
+		USDC_MINT,
+		wallet.publicKey
+	);
+
+	const accountInfo =
+		await provider.connection.getAccountInfo(adminUsdcAccount);
+	if (!accountInfo) {
+		tx.add(
+			createAssociatedTokenAccountInstruction(
+				wallet.publicKey,
+				adminUsdcAccount,
+				wallet.publicKey,
+				USDC_MINT
+			)
+		);
+	}
+
+	const accounts = {
+		property: new PublicKey(property.publicKey),
+		propertyMint: new PublicKey(property.mint),
+		admin: wallet.publicKey,
+		adminUsdcAccount: adminUsdcAccount,
+		tokenProgram: TOKEN_PROGRAM_ID,
+		systemProgram: anchor.web3.SystemProgram.programId,
+	};
+
+	const distributeDividendsIx = await program.methods
+		.distributeDividends(new anchor.BN(amount * 1e6))
+		.accounts(accounts)
+		.instruction();
+
+	tx.add(distributeDividendsIx);
+
+	tx.recentBlockhash = (
+		await provider.connection.getLatestBlockhash()
+	).blockhash;
+	tx.feePayer = wallet.publicKey;
+
+	const signedTx = await wallet.signTransaction(tx);
+	const txSignature = await provider.connection.sendRawTransaction(
+		signedTx.serialize(),
+		{ skipPreflight: false }
+	);
+
+	await provider.connection
+		.confirmTransaction(txSignature, "confirmed")
+		.then(async () => {
+			await distributeDividendsBackend({
+				amount,
+				propertyPda: property.publicKey,
+				userPublicKey: wallet.publicKey.toBase58(),
+				txSignature,
+			});
+		});
+
+	return txSignature;
+}
+
+export async function closePropertyTransaction(
+	provider: AnchorProvider,
+	program: Program<CrowdEstate>,
+	property: Property,
+	wallet: WalletContextState
+) {
+	if (!wallet.publicKey) throw new Error("Wallet not connected.");
+
+	const tx = new Transaction();
+
+	const adminUsdcAccount = await getAssociatedTokenAddress(
+		USDC_MINT,
+		wallet.publicKey
+	);
+
+	const accountInfo =
+		await provider.connection.getAccountInfo(adminUsdcAccount);
+	if (!accountInfo) {
+		tx.add(
+			createAssociatedTokenAccountInstruction(
+				wallet.publicKey,
+				adminUsdcAccount,
+				wallet.publicKey,
+				USDC_MINT
+			)
+		);
+	}
+
+	const propertyVault = await getAssociatedTokenAddress(
+		new PublicKey(property.mint),
+		new PublicKey(property.publicKey),
+		true
+	);
+
+	const accounts = {
+		property: new PublicKey(property.publicKey),
+		propertyMint: new PublicKey(property.mint),
+		propertyVault: propertyVault,
+		admin: wallet.publicKey,
+		adminUsdcAccount: adminUsdcAccount,
+		tokenProgram: TOKEN_PROGRAM_ID,
+		systemProgram: anchor.web3.SystemProgram.programId,
+	};
+
+	const closePropertyIx = await program.methods
+		.closeProperty()
+		.accounts(accounts)
+		.instruction();
+
+	tx.add(closePropertyIx);
+
+	tx.recentBlockhash = (
+		await provider.connection.getLatestBlockhash()
+	).blockhash;
+	tx.feePayer = wallet.publicKey;
+
+	const signedTx = await wallet.signTransaction(tx);
+	const txSignature = await provider.connection.sendRawTransaction(
+		signedTx.serialize(),
+		{ skipPreflight: false }
+	);
+
+	await provider.connection
+		.confirmTransaction(txSignature, "confirmed")
+		.then(async () => {
+			await closePropertyBackend({
+				propertyPda: property.publicKey,
+				userPublicKey: wallet.publicKey.toBase58(),
+				txSignature,
+			});
+		});
+
+	return txSignature;
+}
+```
+
+./services/usdc.ts:
+```$2
+import { USDC_MINT } from "@/utils/solana";
+import { AnchorProvider } from "@coral-xyz/anchor";
+import {
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddress,
+} from "@solana/spl-token";
+import { WalletContextState } from "@solana/wallet-adapter-react";
+import { PublicKey, Transaction } from "@solana/web3.js";
+
+export const checkUsdcAccount = async (
+  provider: AnchorProvider,
+  publicKey: PublicKey,
+): Promise<number> => {
+  try {
+    const usdcMintInfo = await provider.connection.getAccountInfo(USDC_MINT);
+    if (!usdcMintInfo) return;
+
+    const userUsdcAddress = await getAssociatedTokenAddress(
+      USDC_MINT,
+      publicKey,
+    );
+    const accountInfo =
+      await provider.connection.getAccountInfo(userUsdcAddress);
+
+    if (accountInfo) {
+      const balance = await provider.connection
+        .getTokenAccountBalance(userUsdcAddress)
+        .then((balance) => balance.value.uiAmount)
+        .catch((error) => {
+          console.error("Error fetching USDC balance:", error);
+          return 0;
+        });
+
+      return balance;
+    } else {
+      throw new Error("USDC account not found");
+    }
+  } catch (error) {
+    console.error("Error checking USDC account:", error);
+    throw new Error("Error checking USDC account");
+  }
+};
+
+export const createUsdcAccount = async (
+  provider: AnchorProvider,
+  wallet: WalletContextState,
+) => {
+  try {
+    if (!wallet.publicKey || !provider) {
+      throw new Error("Wallet not connected or provider unavailable");
+    }
+
+    const userUsdcAddress = await getAssociatedTokenAddress(
+      USDC_MINT,
+      wallet.publicKey,
+    );
+    const accountInfo =
+      await provider.connection.getAccountInfo(userUsdcAddress);
+    if (accountInfo) {
+      throw new Error("USDC account already exists");
+    }
+
+    const tx = new Transaction().add(
+      createAssociatedTokenAccountInstruction(
+        wallet.publicKey,
+        userUsdcAddress,
+        wallet.publicKey,
+        USDC_MINT,
+      ),
+    );
+    tx.recentBlockhash = (
+      await provider.connection.getLatestBlockhash()
+    ).blockhash;
+    tx.feePayer = wallet.publicKey;
+
+    const signTx = await wallet.signTransaction(tx);
+    provider.connection.sendRawTransaction(signTx.serialize());
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (error) {
+    throw new Error("Error creating USDC account");
+  }
+};
+
+export const getUsdcBalance = async (
+  provider: AnchorProvider,
+  publicKey: PublicKey,
+) => {
+  try {
+    const userUsdcAddress = await getAssociatedTokenAddress(
+      USDC_MINT,
+      publicKey,
+    );
+
+    const balance = await provider.connection
+      .getTokenAccountBalance(userUsdcAddress)
+      .then((balance) => balance.value.uiAmount);
+
+    return balance;
+  } catch (error) {
+    console.error("Error fetching USDC balance:", error);
+    throw new Error("Error fetching USDC balance");
+  }
+};
+```
+
+./services/user.ts:
+```$2
+import { User } from "@/components/AuthContext";
+import { axios } from "@/utils/axios";
+
+export interface PropertyResponse {
+	name: string;
+	total_tokens: number;
+	price_per_token: number;
+	token_symbol: string;
+	property_pda: string;
+	creator_public_key: string;
+	created_at: string;
+	id: number;
+}
+
+export const getUserData = async (publicKey: string): Promise<User> => {
+	try {
+		const response = await axios.post("/user/login", {
+			publicKey,
+		});
+
+		const user: User = response.data.user;
+		return user;
+	} catch (error) {
+		console.error(
+			"Error getting user data:",
+			error.response.data.error || error
+		);
+	}
+};
+
+export const registerUser = async (user: User): Promise<User> => {
+	try {
+		const response = await axios.post("/user/register", user);
+		const newUser: User = response.data.user;
+		return newUser;
+	} catch (error) {
+		console.error(
+			"Error registering user:",
+			error.response.data.error || error
+		);
+	}
+};
+
+export const createPropertyBackend = async (property: {
+	userPublicKey: string;
+	propertyPda: string;
+	txSignature: string;
+}) => {
+	try {
+		await axios.post("/program/create-property", property);
+	} catch (error) {
+		console.error(
+			"Error creating property:",
+			error.response.data.error || error
+		);
+	}
+};
+
+export const createInvestmentBackend = async (investment: {
+	investorPublicKey: string;
+	propertyPda: string;
+	investmentPda: string;
+	txSignature: string;
+}) => {
+	try {
+		await axios.post("/program/create-investment", investment);
+	} catch (error) {
+		console.error(
+			"Error creating investment:",
+			error.response.data.error || error
+		);
+	}
+};
+
+export const withdrawInvestmentBackend = async (investment: {
+	investmentPda: string;
+	investorPublicKey: string;
+	propertyPda: string;
+	txSignature: string;
+}) => {
+	try {
+		await axios.post("/program/withdraw-investment", investment);
+	} catch (error) {
+		console.error(
+			"Error withdrawing investment:",
+			error.response.data.error || error
+		);
+	}
+}
+
+export const distributeDividendsBackend = async (dividends: {
+	propertyPda: string;
+	userPublicKey: string;
+	txSignature: string;
+	amount: number;
+}) => {
+	try {
+		await axios.post("/program/distribute-dividends", dividends);
+	} catch (error) {
+		console.error(
+			"Error distributing dividends:",
+			error.response.data.error || error
+		);
+	}
+}
+
+export const closePropertyBackend = async (property: {
+	propertyPda: string;
+	userPublicKey: string;
+	txSignature: string;
+}) => {
+	try {
+		await axios.post("/program/close-property", property);
+	} catch (error) {
+		console.error(
+			"Error closing property:",
+			error.response.data.error || error
+		);
+	}
+}```
+
+./utils/axios.ts:
+```$2
+import * as a from "axios";
+
+export const axios = a.default.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+```
+
+./utils/solana.ts:
+```$2
+import {
+	Connection,
+	LAMPORTS_PER_SOL,
+	PublicKey,
+	Transaction,
+} from "@solana/web3.js";
+import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import * as anchor from "@coral-xyz/anchor";
+import {
+	createAssociatedTokenAccountInstruction,
+	createMint,
+	getAssociatedTokenAddress,
+	mintTo,
+} from "@solana/spl-token";
+
+const PRIVATE_KEY = process.env.NEXT_PUBLIC_ADM;
+if (!PRIVATE_KEY) {
+	throw new Error("ADM private key is required");
+}
+const ADM = Uint8Array.from(JSON.parse(PRIVATE_KEY));
+const admKeypair = anchor.web3.Keypair.fromSecretKey(ADM);
+export const network = WalletAdapterNetwork.Devnet;
+export const endpoint = "https://api.devnet.solana.com";
+export const USDC_MINT = new PublicKey(
+	"5AvgBHv4sAxF2K8AHYV3jZrkqWiDsqq5TGmRqX2S2xQH" // "https://api.devnet.solana.com"
+);
+
+export interface Property {
+	publicKey: string;
+	property_name: string;
+	total_tokens: number;
+	available_tokens: number;
+	token_price_usdc: number;
+	token_symbol: string;
+	admin: string;
+	mint: string;
+	bump: number;
+	dividends_total: number;
+	is_closed: boolean;
+}
+
+export interface Investment {
+	publicKey: string;
+	investor: string;
+	property: string;
+	amount: number;
+	dividendsClaimed: number;
+}
+
+export const ensureAssociatedTokenAccount = async (
+	connection: Connection,
+	tx: Transaction,
+	mint: PublicKey,
+	owner: PublicKey,
+	payer: PublicKey,
+	allowOwnerOffCurve: boolean = false
+) => {
+	const ata = await getAssociatedTokenAddress(
+		mint,
+		owner,
+		allowOwnerOffCurve
+	);
+
+	const accountInfo = await connection.getAccountInfo(ata);
+	if (!accountInfo) {
+		if (allowOwnerOffCurve) {
+			const propertyUsdcVaultAddress = await getAssociatedTokenAddress(
+				mint,
+				owner,
+				true
+			);
+
+			tx.add(
+				createAssociatedTokenAccountInstruction(
+					payer,
+					propertyUsdcVaultAddress,
+					owner,
+					mint
+				)
+			);
+		} else {
+			tx.add(
+				createAssociatedTokenAccountInstruction(payer, ata, owner, mint)
+			);
+		}
+	}
+	return ata;
+};
+
+export const ellipsify = (str: string) => {
+	if (str.length > 10) {
+		return str.slice(0, 5) + "..." + str.slice(-5);
+	}
+	return str;
+};
+
+export const mintUsdc = async (
+	connection: Connection,
+	amount: number,
+	recipientUsdcAccount: PublicKey
+) => {
+	const balanceBefore =
+		await connection.getTokenAccountBalance(recipientUsdcAccount);
+	console.log(
+		"Recipient USDC Account Balance Before: ",
+		balanceBefore.value.uiAmount
+	);
+
+	let balanceAfter = balanceBefore;
+
+	while (balanceAfter.value.uiAmount <= balanceBefore.value.uiAmount) {
+		await mintTo(
+			connection,
+			admKeypair,
+			USDC_MINT,
+			recipientUsdcAccount,
+			admKeypair.publicKey,
+			amount * 10 ** 6
+		);
+
+		balanceAfter =
+			await connection.getTokenAccountBalance(recipientUsdcAccount);
+		console.log(
+			"Recipient USDC Account Balance After: ",
+			balanceAfter.value.uiAmount
+		);
+	}
+
+	return balanceAfter.value.uiAmount;
+};
+
+export const setupUsdc = async (connection: Connection) => {
+	while (
+		(await connection.getBalance(admKeypair.publicKey)) <
+		5 * LAMPORTS_PER_SOL
+	)
+		await connection.confirmTransaction(
+			await connection.requestAirdrop(
+				admKeypair.publicKey,
+				1 * LAMPORTS_PER_SOL
+			)
+		);
+
+	console.log("Platform pubkey: ", admKeypair.publicKey.toString());
+
+	const usdcMint = await createMint(
+		connection,
+		admKeypair,
+		admKeypair.publicKey,
+		null,
+		6
+	);
+
+	console.log("USDC Mint: ", usdcMint.toBase58());
+
+	const usdcMintInfo = await connection.getAccountInfo(usdcMint);
+
+	if (!usdcMintInfo) {
+		throw new Error("USDC mint not found");
+	}
+};
+```
+

@@ -13,7 +13,8 @@ import {
 interface AuthContextProps {
 	isAuthenticated: boolean;
 	user: User | null;
-	login: (publicKey: string, name?: string) => Promise<void>;
+	login: (publicKey: string) => Promise<void>;
+	register: (publicKey: string, name: string) => Promise<void>,
 	logout: () => void;
 }
 
@@ -44,42 +45,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		}
 	}, []);
 
-	const login = useCallback(
-		async (publicKey: string, name?: string): Promise<void> => {
-			let user: User | null = null;
+	const register = async (publicKey: string, name: string): Promise<void> => {
+		let newUser: User = {
+			name,
+			publicKey: publicKey,
+			role: Role.Investor,
+		};
 
-			try {
-				user = await getUserData(publicKey);
-				if (user) {
-					console.log("existingUser", user);
-					setUser(user);
-					setIsAuthenticated(true);
-				}
-			} catch (error) {
-				try {
-					console.log("user not found", error);
+		try {
+			newUser = await registerUser(newUser);
 
-					user = {
-						name,
-						publicKey: publicKey,
-						role: Role.Investor,
-					};
-
-					await registerUser(user);
-				} catch (error) {
-					console.error("error registering user", error);
-					throw error;
-				}
-			}
-
-			setUser(user);
+			setUser(newUser);
 			setIsAuthenticated(true);
-			localStorage.setItem("user", JSON.stringify(user));
+			localStorage.setItem("user", JSON.stringify(newUser));
 
-			if (user.role === Role.Landlord) {
+			if (newUser.role === Role.Landlord) {
 				router.push("/landlord");
 			} else {
 				router.push("/invest");
+			}
+		} catch (registerError) {
+			console.error("error registering user", registerError);
+			throw registerError;
+		}
+	};
+
+	const login = useCallback(
+		async (publicKey: string): Promise<void> => {
+			let user: User | null = null;
+
+			console.log("logging in", publicKey);
+
+			try {
+				user = await getUserData(publicKey);
+				if (!user) {
+					throw new Error("User not found");
+				}
+				console.log("existingUser", user);
+			} catch (error) {
+				console.log("user not found", error);
+				throw error;
+			}
+
+			if (user) {
+				setUser(user);
+				setIsAuthenticated(true);
+				localStorage.setItem("user", JSON.stringify(user));
+
+				if (user.role === Role.Landlord) {
+					router.push("/landlord");
+				} else {
+					router.push("/invest");
+				}
+			} else {
+				console.error("User is null after login attempt");
 			}
 		},
 		[router]
@@ -100,7 +119,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	}, []);
 
 	return (
-		<AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+		<AuthContext.Provider
+			value={{ isAuthenticated, user, login, register, logout }}
+		>
 			{children}
 		</AuthContext.Provider>
 	);

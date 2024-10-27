@@ -1,8 +1,5 @@
-import { CrowdEstate } from "@/idl/types/crowd_estate";
 import { axios } from "@/utils/axios";
 import { Investment, Property } from "@/utils/solana";
-import { Program } from "@coral-xyz/anchor";
-import { WalletContextState } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 
 export enum Filters {
@@ -12,15 +9,25 @@ export enum Filters {
 	USER = "USER",
 }
 
-export const getProperties = async (
-	userPublicKey?: string,
-	filters: Filters[] = [Filters.ALL],
-): Promise<Property[]> => {
+interface GetPropertiesArgs {
+	userPublicKey?: string;
+	filters?: Filters[];
+	forceRefresh?: boolean;
+}
+
+export const getProperties = async ({
+	userPublicKey,
+	filters = [Filters.ALL],
+	forceRefresh = false,
+}: GetPropertiesArgs): Promise<Property[]> => {
 	try {
-		const properties: Property[] = await axios.post("/list-properties", {
+		const response = await axios.post("/program/properties", {
 			filters,
 			userPublicKey,
+			forceRefresh,
 		});
+
+		const properties: Property[] = response.data.properties;
 
 		return properties;
 	} catch (error) {
@@ -29,21 +36,62 @@ export const getProperties = async (
 	}
 };
 
-export const getInvestments = async (
-	publicKey: string
-): Promise<{
+export const getProperty = async (propertyPda: string): Promise<Property> => {
+	try {
+		const response = await axios.get(`/program/properties/${propertyPda}`);
+
+		const property: Property = response.data.property;
+
+		return property;
+	} catch (error) {
+		console.error("Error fetching properties:", error);
+		throw error;
+	}
+};
+
+interface GetInvestmentsArgs {
+	publicKey: string;
+	forceRefresh?: boolean;
+}
+
+interface GetInvestmentsResponse {
 	investmentsData: Investment[];
 	invested: number;
 	returns: number;
-}> => {
+	properties: Property[];
+}
+
+export const getInvestments = async ({
+	publicKey,
+	forceRefresh = false,
+}: GetInvestmentsArgs): Promise<GetInvestmentsResponse> => {
 	try {
-		const response = await axios.post("/list-investments", {
+		const response = await axios.post("/program/investments", {
 			publicKey,
+			forceRefresh,
 		});
 
-		const { investmentsData, invested, returns } = response.data;
+		const { investmentsData, invested, returns, properties } =
+			response.data;
 
-		return { investmentsData, invested, returns };
+		return { investmentsData, invested, returns, properties };
+	} catch (error) {
+		console.error("Error fetching investments:", error);
+		throw error;
+	}
+};
+
+export const getInvestment = async (
+	investmentPda: string
+): Promise<Investment> => {
+	try {
+		const response = await axios.get(
+			`/program/investments/${investmentPda}`
+		);
+
+		const investment: Investment = response.data.investment;
+
+		return investment;
 	} catch (error) {
 		console.error("Error fetching investments:", error);
 		throw error;
@@ -51,27 +99,37 @@ export const getInvestments = async (
 };
 
 export const fetchInvestmentPDA = async (
-	program: Program<CrowdEstate>,
-	property: Property,
-	wallet: WalletContextState
+	programId: PublicKey,
+	userPublicKey: string,
+	propertyPda: string
 ): Promise<{
 	pda: PublicKey | null;
 	exists: boolean;
 }> => {
+	if (!userPublicKey || !propertyPda) {
+		return {
+			pda: null,
+			exists: false,
+		};
+	}
+
+	console.log("userPublicKey", userPublicKey);
+	console.log("propertyPda", propertyPda);
+	console.log("programId", programId.toBase58());
+
 	const [investmentPda] = PublicKey.findProgramAddressSync(
 		[
 			Buffer.from("investment"),
-			wallet.publicKey.toBuffer(),
-			new PublicKey(property.publicKey).toBuffer(),
+			Buffer.from(userPublicKey),
+			new PublicKey(propertyPda).toBuffer(),
 		],
-		program.programId
+		programId
 	);
 
-	const investmentAccount =
-		await program.account.investor.fetchNullable(investmentPda);
+	const investment = await getInvestment(investmentPda.toBase58());
 
 	return {
-		pda: investmentAccount ? null : investmentPda,
-		exists: !!investmentAccount,
+		pda: investmentPda,
+		exists: !!investment,
 	};
 };

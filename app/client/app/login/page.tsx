@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAuth } from "@/components/AuthContext";
 import { PhantomWalletName } from "@solana/wallet-adapter-wallets";
@@ -28,7 +28,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 export default function LoginPage() {
 	const { connect, select, publicKey } = useWallet();
-	const { isAuthenticated, login, user } = useAuth();
+	const { isAuthenticated, login, register, user } = useAuth();
 	const router = useRouter();
 
 	const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +55,7 @@ export default function LoginPage() {
 		}
 	}, [showRegisterModal]);
 
-	const handleLogin = async () => {
+	const handleLogin = useCallback(async () => {
 		setIsLoading(true);
 		setCancelLogin(false);
 
@@ -110,9 +110,9 @@ export default function LoginPage() {
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, [cancelLogin, connect, login, publicKey, select]);
 
-	const handleRegister = async () => {
+	const handleRegister = useCallback(async () => {
 		if (!name) {
 			toast({
 				title: "Error",
@@ -125,7 +125,7 @@ export default function LoginPage() {
 		setIsLoading(true);
 
 		try {
-			await login(publicKey!.toBase58(), name);
+			await register(publicKey?.toBase58(), name);
 
 			toast({
 				title: "Success",
@@ -144,7 +144,7 @@ export default function LoginPage() {
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, [name, publicKey, register]);
 
 	return (
 		<div className="min-h-screen bg-gradient-to-b from-primary/20 to-background flex items-center justify-center p-4">
@@ -160,6 +160,7 @@ export default function LoginPage() {
 					</p>
 
 					<WalletMultiButton
+						className="w-full rounded-lg"
 						style={{
 							display: "flex",
 							justifyContent: "center",
@@ -189,7 +190,12 @@ export default function LoginPage() {
 
 			<Dialog
 				open={showRegisterModal}
-				onOpenChange={setShowRegisterModal}
+				onOpenChange={(open) => {
+					console.log("Dialog open state changed:", open);
+					if (!open) {
+						setShowRegisterModal(false);
+					}
+				}}
 			>
 				<DialogContent>
 					<DialogHeader>
