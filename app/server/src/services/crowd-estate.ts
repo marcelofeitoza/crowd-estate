@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
-import { CrowdEstate } from "../../../../target/types/crowd_estate";
-import IDL from "../../../../target/idl/crowd_estate.json";
+import { CrowdEstate } from "../../target/types/crowd_estate";
+import IDL from "../../target/idl/crowd_estate.json";
 import { clusterApiUrl, Connection, Keypair } from "@solana/web3.js";
 import { Wallet } from "@coral-xyz/anchor";
 import { Property } from "../models/Property";

@@ -8,7 +8,8 @@
     "prestart": "yarn build",
     "start": "node dist/server.js",
     "build": "tsc",
-    "test:api": "ts-node test.ts"
+    "test:api": "ts-node test.ts",
+    "update-program": "cp -r ../../target/idl target/ && cp -r ../../target/types target/"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
