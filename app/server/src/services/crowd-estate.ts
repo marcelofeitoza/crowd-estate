@@ -176,7 +176,7 @@ export const getInvestmentsByInvestor = async (
 	const cachedInvestments = await redis.get(cacheKey);
 	if (cachedInvestments) {
 		console.log("Returning investments from cache");
-		return JSON.parse(cachedInvestments);
+		return cachedInvestments;
 	}
 
 	console.log("Fetching investments from blockchain");

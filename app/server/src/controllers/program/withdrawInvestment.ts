@@ -27,32 +27,17 @@ export const handleWithdrawInvestment = async (body: any) => {
 	const { investmentPda, txSignature, investorPublicKey, propertyPda } =
 		parseResult.data;
 
+	const cacheKeys = [
+		RedisKeyTemplates.investmentsByInvestor(investorPublicKey),
+		RedisKeyTemplates.investmentsDataByInvestor(investorPublicKey),
+		RedisKeyTemplates.property(propertyPda),
+		RedisKeys.Properties,
+		RedisKeys.PropertiesAll,
+	];
+	console.log("Invalidating cache keys:", cacheKeys);
+	await redis.invalidate(cacheKeys);
+
 	try {
-		const cacheKeys = [
-			RedisKeyTemplates.investmentsByInvestor(investorPublicKey),
-			RedisKeyTemplates.investmentsDataByInvestor(investorPublicKey),
-			RedisKeyTemplates.property(propertyPda),
-			RedisKeys.Properties,
-			RedisKeys.PropertiesAll,
-		];
-		console.log("Invalidating cache keys:", cacheKeys);
-		await redis.invalidate(cacheKeys);
-
-		// console.log(`Verifying transaction with txSignature: ${txSignature}`);
-		// const transaction = await program.provider.connection.getTransaction(
-		// 	txSignature,
-		// 	{
-		// 		commitment: "confirmed",
-		// 		maxSupportedTransactionVersion: 0,
-		// 	}
-		// );
-
-		// if (!transaction) {
-		// 	console.error("Transaction not found");
-		// 	throw { code: 404, message: "Transaction not found" };
-		// }
-		// console.log("Transaction found and confirmed");
-
 		console.log(
 			`Fetching investment from Supabase with investmentPda: ${investmentPda}`
 		);
@@ -76,6 +61,7 @@ export const handleWithdrawInvestment = async (body: any) => {
 			.from("investments")
 			.delete()
 			.eq("investment_pda", investmentPda)
+			.select("*")
 			.single();
 
 		if (error || !data) {
@@ -138,40 +124,3 @@ export const handleWithdrawInvestment = async (body: any) => {
 		};
 	}
 };
-
-async function waitForInvestmentAccount(
-	investmentPda: string,
-	timeout = 30000,
-	interval = 500
-): Promise<any> {
-	const startTime = Date.now();
-	let attempts = 0;
-	while (Date.now() - startTime < timeout) {
-		attempts++;
-		try {
-			const investmentAccount = await getInvestment(investmentPda);
-			if (investmentAccount) {
-				console.log(
-					`Investment account found after ${attempts} attempts`
-				);
-				return investmentAccount;
-			}
-		} catch (err: any) {
-			if (err.code === 404) {
-				console.log(
-					`Attempt ${attempts}: Investment account not found. Retrying in ${interval}ms...`
-				);
-				await new Promise((resolve) => setTimeout(resolve, interval));
-				continue;
-			} else {
-				console.error(`Attempt ${attempts}: Unexpected error:`, err);
-				throw err;
-			}
-		}
-	}
-	console.error(`Investment account not found after ${attempts} attempts`);
-	throw {
-		code: 404,
-		message: "Investment account not found on-chain after waiting",
-	};
-}
