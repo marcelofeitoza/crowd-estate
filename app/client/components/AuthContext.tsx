@@ -14,7 +14,7 @@ interface AuthContextProps {
 	isAuthenticated: boolean;
 	user: User | null;
 	login: (publicKey: string) => Promise<void>;
-	register: (publicKey: string, name: string) => Promise<void>,
+	register: (publicKey: string, name: string, role?: Role) => Promise<void>;
 	logout: () => void;
 }
 
@@ -45,11 +45,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		}
 	}, []);
 
-	const register = async (publicKey: string, name: string): Promise<void> => {
+	const register = async (
+		publicKey: string,
+		name: string,
+		role?: Role
+	): Promise<void> => {
 		let newUser: User = {
 			name,
 			publicKey: publicKey,
-			role: Role.Investor,
+			role: role || Role.Investor,
 		};
 
 		try {

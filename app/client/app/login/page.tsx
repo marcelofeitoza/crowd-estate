@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useAuth } from "@/components/AuthContext";
+import { Role, useAuth } from "@/components/AuthContext";
 import { PhantomWalletName } from "@solana/wallet-adapter-wallets";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ export default function LoginPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [showRegisterModal, setShowRegisterModal] = useState(false);
 	const [name, setName] = useState("");
+	const [role, setRole] = useState<Role>(Role.Investor);
 	const [cancelLogin, setCancelLogin] = useState(false);
 
 	useEffect(() => {
@@ -125,7 +126,7 @@ export default function LoginPage() {
 		setIsLoading(true);
 
 		try {
-			await register(publicKey?.toBase58(), name);
+			await register(publicKey?.toBase58(), name, role);
 
 			toast({
 				title: "Success",
@@ -144,7 +145,7 @@ export default function LoginPage() {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [name, publicKey, register]);
+	}, [name, publicKey, register, role]);
 
 	return (
 		<div className="min-h-screen bg-gradient-to-b from-primary/20 to-background flex items-center justify-center p-4">
@@ -211,6 +212,17 @@ export default function LoginPage() {
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 						/>
+
+						<p className="text-sm text-muted-foreground">
+							Please select your role
+						</p>
+						<select
+							className="w-full rounded-lg"
+							onChange={(e) => setRole(e.target.value as Role)}
+						>
+							<option value={Role.Investor}>Investor</option>
+							<option value={Role.Landlord}>Landlord</option>
+						</select>
 					</div>
 
 					<DialogFooter>
