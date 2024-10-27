@@ -1,11 +1,14 @@
 export interface Property {
-	name: string;
+	publicKey: string;
+	property_name: string;
 	total_tokens: number;
 	available_tokens: number;
-	price_per_token: number;
+	token_price_usdc: number;
 	token_symbol: string;
-	property_pda: string;
-	creator_public_key: string;
+	admin: string;
+	mint: string;
+	bump: number;
+	dividends_total: number;
 	is_closed: boolean;
 }
 

@@ -1,16 +1,16 @@
 import { z } from "zod";
-import { User } from "../../models/User";
-import redisClient from "../../services/redis";
+import { Role, User } from "../../models/User";
 import { supabase } from "../../services/supabase";
 
 const createHandleLoginSchema = z.object({
-	publicKey: z.string().nonempty(),
+	publicKey: z.string().min(1),
 });
 
 export const handleLogin = async (body: any) => {
 	const parseResult = createHandleLoginSchema.safeParse(body);
 
 	if (!parseResult.success) {
+		console.error("Invalid input parameters:", parseResult.error);
 		throw {
 			code: 400,
 			message: "Invalid input parameters",
@@ -20,44 +20,37 @@ export const handleLogin = async (body: any) => {
 	const { publicKey } = parseResult.data;
 
 	if (!publicKey) {
+		console.error("Missing publicKey parameter");
 		throw { code: 400, message: "Missing publicKey parameter" };
 	}
 
 	let user: User | null = null;
 	try {
-		const cachedUser = await redisClient.get(`user:${publicKey}`);
-		if (cachedUser) {
-			user = JSON.parse(cachedUser);
-			console.log("User found in Redis cache");
-		} else {
-			const { data, error } = await supabase
-				.from("users")
-				.select("*")
-				.eq("public_key", publicKey)
-				.single();
+		console.log("Fetching user with publicKey:", publicKey);
+		const { data, error } = await supabase
+			.from("users")
+			.select("*")
+			.eq("public_key", publicKey.toString())
+			.single();
 
-			if (error || !data) {
-				console.error("Error fetching user from Supabase:", error);
-				throw { code: 404, message: "User not found" };
-			}
-
-			user = {
-				id: data.id,
-				publicKey: data.public_key,
-				name: data.name,
-				role: data.role,
-			};
-
-			await redisClient.setEx(
-				`user:${publicKey}`,
-				60,
-				JSON.stringify(user)
-			);
-
-			console.log("User found in Supabase and stored in Redis");
+		if (error || !data) {
+			console.error("Error fetching user from Supabase:", error);
+			throw { code: 404, message: "User not found" };
 		}
+
+		user = {
+			id: data.id,
+			publicKey: data.public_key,
+			name: data.name,
+			role: data.role as Role,
+		};
 	} catch (err: any) {
+		if (err.message && err.message.includes("fetch failed")) {
+			console.error("Network error during login:", err);
+			throw { code: 503, message: "Service unavailable" };
+		}
 		if (err.code === 404) {
+			console.error("User not found:", err);
 			throw { code: 404, message: "User not found" };
 		}
 		console.error("Error during login:", err);

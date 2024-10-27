@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { Role } from "../../models/User";
-import redisClient from "../../services/redis";
 import { supabase } from "../../services/supabase";
 
 const createHandleRegisterSchema = z.object({
@@ -10,6 +9,7 @@ const createHandleRegisterSchema = z.object({
 });
 
 export const handleRegister = async (body: any) => {
+	console.log("Registering user:", body);
 	const {
 		data: { publicKey, name, role },
 	} = createHandleRegisterSchema.safeParse(body);
@@ -57,16 +57,6 @@ export const handleRegister = async (body: any) => {
 		name: data.name,
 		role: data.role,
 	};
-
-	try {
-		await redisClient.setEx(
-			`user:${publicKey}`,
-			3600,
-			JSON.stringify(user)
-		);
-	} catch (err) {
-		console.error("Error storing user in Redis:", err);
-	}
 
 	return { user };
 };

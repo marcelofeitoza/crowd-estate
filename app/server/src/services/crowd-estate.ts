@@ -5,6 +5,8 @@ import { Connection, Keypair } from "@solana/web3.js";
 import { Wallet } from "@coral-xyz/anchor";
 import { Property } from "../models/Property";
 import { Filters } from "../controllers/program/listProperties";
+import { Investment } from "../models/Investment";
+import { redis, RedisKeys } from "./redis";
 
 const admKeypairBytesString = process.env.ADM!;
 if (!admKeypairBytesString) {
@@ -16,10 +18,9 @@ const endpoint = "https://api.devnet.solana.com";
 const connection = new Connection(endpoint);
 const walletKeypair = Keypair.fromSecretKey(admKeypairBytes);
 const wallet = new Wallet(walletKeypair);
-const provider = new anchor.AnchorProvider(connection, wallet, {
-	preflightCommitment: "processed",
-});
+const provider = new anchor.AnchorProvider(connection, wallet);
 const program = new anchor.Program<CrowdEstate>(IDL as CrowdEstate, provider);
+console.log("programID", program.programId);
 
 export const verifyProperty = async (
 	propertyPda: string
@@ -30,25 +31,75 @@ export const verifyProperty = async (
 
 export const getProperties = async (
 	filters: Filters[] = [Filters.ALL],
-	userPublicKey?: string
+	userPublicKey?: string,
+	forceRefresh: boolean = false
 ): Promise<Property[]> => {
-	const fetchedProperties = await program.account.property.all();
-	console.log(fetchedProperties);
+	const cacheKey = RedisKeys.PropertiesAll;
+	let propertiesData: Property[];
 
-	let propertiesData: Property[] = fetchedProperties.map((property) => ({
-		name: Buffer.from(property.account.propertyName).toString().trim(),
-		total_tokens: property.account.totalTokens.toNumber(),
-		available_tokens: property.account.availableTokens.toNumber(),
-		price_per_token: property.account.tokenPriceUsdc.toNumber() / 1e6,
-		token_symbol: Buffer.from(property.account.tokenSymbol)
-			.toString()
-			.trim(),
-		property_pda: property.publicKey.toBase58(),
-		creator_public_key: property.account.admin.toBase58(),
-		is_closed: property.account.isClosed,
-	}));
+	if (!forceRefresh) {
+		const cachedProperties = await redis.get(cacheKey);
+		if (cachedProperties) {
+			console.log(`[getProperties] Cache hit for key: ${cacheKey}`);
+			propertiesData = JSON.parse(cachedProperties);
+		} else {
+			console.log(
+				`[getProperties] Cache miss for key: ${cacheKey}. Fetching from blockchain.`
+			);
+			const fetchedProperties = await program.account.property.all();
 
-	propertiesData = propertiesData.filter((property) => {
+			propertiesData = fetchedProperties.map((property) => ({
+				publicKey: property.publicKey.toBase58(),
+				property_name: Buffer.from(property.account.propertyName)
+					.toString()
+					.trim(),
+				total_tokens: property.account.totalTokens.toNumber(),
+				available_tokens: property.account.availableTokens.toNumber(),
+				token_price_usdc:
+					property.account.tokenPriceUsdc.toNumber() / 1e6,
+				token_symbol: Buffer.from(property.account.tokenSymbol)
+					.toString()
+					.trim(),
+				admin: property.account.admin.toBase58(),
+				mint: property.account.mint.toBase58(),
+				bump: property.account.bump,
+				dividends_total:
+					property.account.dividendsTotal.toNumber() / 1e6,
+				is_closed: property.account.isClosed,
+			}));
+
+			await redis.set(cacheKey, JSON.stringify(propertiesData));
+			console.log(`[getProperties] Cache set for key: ${cacheKey}`);
+		}
+	} else {
+		console.log(
+			`[getProperties] forceRefresh=true. Fetching properties from blockchain.`
+		);
+		const fetchedProperties = await program.account.property.all();
+
+		propertiesData = fetchedProperties.map((property) => ({
+			publicKey: property.publicKey.toBase58(),
+			property_name: Buffer.from(property.account.propertyName)
+				.toString()
+				.trim(),
+			total_tokens: property.account.totalTokens.toNumber(),
+			available_tokens: property.account.availableTokens.toNumber(),
+			token_price_usdc: property.account.tokenPriceUsdc.toNumber() / 1e6,
+			token_symbol: Buffer.from(property.account.tokenSymbol)
+				.toString()
+				.trim(),
+			admin: property.account.admin.toBase58(),
+			mint: property.account.mint.toBase58(),
+			bump: property.account.bump,
+			dividends_total: property.account.dividendsTotal.toNumber() / 1e6,
+			is_closed: property.account.isClosed,
+		}));
+
+		await redis.set(cacheKey, JSON.stringify(propertiesData));
+		console.log(`[getProperties] Cache updated for key: ${cacheKey}`);
+	}
+
+	const filteredProperties = propertiesData.filter((property) => {
 		for (const filter of filters) {
 			if (filter === Filters.ALL) {
 				return true;
@@ -58,7 +109,7 @@ export const getProperties = async (
 				return false;
 			} else if (
 				filter === Filters.USER &&
-				property.creator_public_key !== userPublicKey
+				property.admin !== userPublicKey
 			) {
 				return false;
 			}
@@ -66,10 +117,16 @@ export const getProperties = async (
 		return true;
 	});
 
-	return propertiesData;
+	return filteredProperties;
 };
 
 export const getProperty = async (propertyPda: string): Promise<Property> => {
+	const cacheKey = `property:${propertyPda}`;
+	const cachedProperty = await redis.get(cacheKey);
+	if (cachedProperty) {
+		return JSON.parse(cachedProperty);
+	}
+
 	const propertyAccount = await program.account.property.fetchNullable(
 		propertyPda
 	);
@@ -79,19 +136,94 @@ export const getProperty = async (propertyPda: string): Promise<Property> => {
 	}
 
 	const property: Property = {
-		name: Buffer.from(propertyAccount.propertyName).toString().trim(),
+		publicKey: propertyPda,
+		property_name: Buffer.from(propertyAccount.propertyName)
+			.toString()
+			.trim(),
 		total_tokens: propertyAccount.totalTokens.toNumber(),
-		price_per_token: propertyAccount.tokenPriceUsdc.toNumber() / 1e6,
+		available_tokens: propertyAccount.availableTokens.toNumber(),
+		token_price_usdc: propertyAccount.tokenPriceUsdc.toNumber() / 1e6,
 		token_symbol: Buffer.from(propertyAccount.tokenSymbol)
 			.toString()
 			.trim(),
-		property_pda: propertyPda,
-		available_tokens: propertyAccount.availableTokens.toNumber(),
-		creator_public_key: propertyAccount.admin.toBase58(),
+		admin: propertyAccount.admin.toBase58(),
+		mint: propertyAccount.mint.toBase58(),
+		bump: propertyAccount.bump,
+		dividends_total: propertyAccount.dividendsTotal.toNumber() / 1e6,
 		is_closed: propertyAccount.isClosed,
 	};
 
+	await redis.set(cacheKey, JSON.stringify(property));
+
 	return property;
+};
+
+export const getPropertiesByPDAs = async (
+	propertyPDAs: string[]
+): Promise<Property[]> => {
+	const properties: Property[] = [];
+
+	for (const pda of propertyPDAs) {
+		const property = await getProperty(pda);
+		properties.push(property);
+	}
+
+	return properties;
+};
+
+export const getInvestmentsByInvestor = async (
+	investorPublicKey: string
+): Promise<Investment[]> => {
+	const cacheKey = `investments:${investorPublicKey}`;
+	const cachedInvestments = await redis.get(cacheKey);
+	if (cachedInvestments) {
+		console.log("Returning investments from cache");
+		return JSON.parse(cachedInvestments);
+	}
+
+	console.log("Fetching investments from blockchain");
+	const fetchedInvestments = await program.account.investor.all([
+		{
+			memcmp: {
+				offset: 8,
+				bytes: investorPublicKey,
+			},
+		},
+	]);
+
+	const investments: Investment[] = fetchedInvestments.map((investment) => ({
+		publicKey: investment.publicKey.toBase58(),
+		property: investment.account.property.toBase58(),
+		amount: investment.account.tokensOwned.toNumber(),
+		dividendsClaimed: investment.account.dividendsClaimed.toNumber(),
+		investor: investment.account.investor.toBase58(),
+	}));
+
+	await redis.set(cacheKey, JSON.stringify(investments));
+
+	return investments;
+};
+
+export const getInvestment = async (
+	investmentPda: string
+): Promise<Investment | null> => {
+	const investmentAccount = await program.account.investor.fetchNullable(
+		investmentPda
+	);
+
+	if (!investmentAccount) {
+		return null;
+	}
+
+	const investment: Investment = {
+		publicKey: investmentPda,
+		property: investmentAccount.property.toBase58(),
+		amount: investmentAccount.tokensOwned.toNumber(),
+		dividendsClaimed: investmentAccount.dividendsClaimed.toNumber(),
+		investor: investmentAccount.investor.toBase58(),
+	};
+
+	return investment;
 };
 
 export { program, provider };

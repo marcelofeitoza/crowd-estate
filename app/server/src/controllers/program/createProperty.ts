@@ -1,13 +1,19 @@
 import { Property } from "../../models/Property";
 import { User } from "../../models/User";
-import { verifyProperty } from "../../services/crowd-estate";
-import redisClient from "../../services/redis";
+import {
+	getProperties,
+	provider,
+	verifyProperty,
+} from "../../services/crowd-estate";
+import { redis, RedisKeys, RedisKeyTemplates } from "../../services/redis";
 import { supabase } from "../../services/supabase";
 import { z } from "zod";
+import { updateSupabaseWithProperties } from "./listProperties";
 
 const createPropertySchema = z.object({
 	userPublicKey: z.string().min(32),
 	propertyPda: z.string().min(32),
+	txSignature: z.string().min(64),
 });
 
 export const handleCreateProperty = async (
@@ -19,12 +25,18 @@ export const handleCreateProperty = async (
 	if (!parseResult.success) {
 		throw { code: 400, message: "Invalid input parameters" };
 	}
-	const { userPublicKey, propertyPda } = parseResult.data;
+	const { userPublicKey, propertyPda, txSignature } = parseResult.data;
 
 	try {
-		await verifyProperty(propertyPda);
+		const cacheKey = RedisKeyTemplates.property(propertyPda);
+		await redis.del(cacheKey);
+		await redis.del(RedisKeyTemplates.property(propertyPda));
+		await redis.del(RedisKeys.Properties);
+		await redis.del(RedisKeys.PropertiesAll);
 
-		if (!userPublicKey || !propertyPda) {
+		const property = await verifyProperty(propertyPda);
+
+		if (!userPublicKey || !property) {
 			throw { code: 400, message: "Missing parameters" };
 		}
 
@@ -67,6 +79,16 @@ export const handleCreateProperty = async (
 				{
 					property_pda: propertyPda,
 					creator_public_key: userPublicKey,
+					property_name: property.property_name,
+					total_tokens: property.total_tokens,
+					available_tokens: property.available_tokens,
+					token_price_usdc: property.token_price_usdc,
+					token_symbol: property.token_symbol,
+					admin: property.admin,
+					mint: property.mint,
+					bump: property.bump,
+					dividends_total: property.dividends_total,
+					is_closed: property.is_closed,
 				},
 			])
 			.select("*")
@@ -77,17 +99,8 @@ export const handleCreateProperty = async (
 			throw { code: 500, message: "Failed to create property" };
 		}
 
-		const property: Property = propertyData;
-
-		await redisClient.setEx(
-			`property:${propertyPda}`,
-			3600,
-			JSON.stringify(property)
-		);
-		console.log("Property cached in Redis");
-
-		await redisClient.del("properties");
-		console.log("Properties cache invalidated");
+		const properties = await getProperties();
+		updateSupabaseWithProperties(properties);
 
 		return { property };
 	} catch (err: any) {

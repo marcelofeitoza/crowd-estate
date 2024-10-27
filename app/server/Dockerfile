@@ -6,6 +6,8 @@ COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 
 COPY . .
+COPY ../../../../target/types/crowd_estate /app/target/types/crowd_estate
+COPY ../../../../target/idl/crowd_estate.json /app/target/idl/crowd_estate.json
 RUN yarn build
 
 FROM node:18-alpine
