@@ -116,7 +116,7 @@ Crowd-Estate is a blockchain-based crowdfunding platform for real estate project
 
 ### **Prerequisites**
 
--   [Node.js](https://nodejs.org/) (version 14 or higher)
+-   [Node.js](https://nodejs.org/)
 -   [Yarn](https://yarnpkg.com/)
 -   [Rust](https://www.rust-lang.org/)
 -   [Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools)

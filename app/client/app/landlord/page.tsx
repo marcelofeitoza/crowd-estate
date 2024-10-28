@@ -127,7 +127,7 @@ export default function Landlord() {
 		}
 
 		try {
-			const { txSignature, propertyPda } =
+			const { propertyPda } =
 				await createPropertyTransaction(
 					provider,
 					program,
