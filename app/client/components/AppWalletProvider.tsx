@@ -3,8 +3,8 @@
 
 import React, { useMemo } from "react";
 import {
-	ConnectionProvider,
-	WalletProvider,
+  ConnectionProvider,
+  WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
@@ -14,18 +14,18 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 import { clusterApiUrl } from "@solana/web3.js";
 
 export default function AppWalletProvider({
-	children,
+  children,
 }: {
-	children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-	const n = clusterApiUrl(network);
-	const wallets = useMemo(() => [new PhantomWalletAdapter()], [n]);
+  const n = clusterApiUrl(network);
+  const wallets = useMemo(() => [new PhantomWalletAdapter()], [n]);
 
-	return (
-		<ConnectionProvider endpoint={n}>
-			<WalletProvider wallets={wallets} autoConnect={true}>
-				<WalletModalProvider>{children}</WalletModalProvider>
-			</WalletProvider>
-		</ConnectionProvider>
-	);
+  return (
+    <ConnectionProvider endpoint={n}>
+      <WalletProvider wallets={wallets} autoConnect={true}>
+        <WalletModalProvider>{children}</WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
 }

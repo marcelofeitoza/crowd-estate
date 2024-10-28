@@ -3,164 +3,161 @@ import { Property } from "@/utils/solana";
 import { PublicKey } from "@solana/web3.js";
 
 export enum Filters {
-	ALL = "ALL",
-	OPEN = "OPEN",
-	CLOSED = "CLOSED",
-	USER = "USER",
+  ALL = "ALL",
+  OPEN = "OPEN",
+  CLOSED = "CLOSED",
+  USER = "USER",
 }
 
 interface GetPropertiesArgs {
-	userPublicKey?: string;
-	filters?: Filters[];
-	forceRefresh?: boolean;
+  userPublicKey?: string;
+  filters?: Filters[];
+  forceRefresh?: boolean;
 }
 
 export const getProperties = async ({
-	userPublicKey,
-	filters = [Filters.ALL],
-	forceRefresh = false,
+  userPublicKey,
+  filters = [Filters.ALL],
+  forceRefresh = false,
 }: GetPropertiesArgs): Promise<Property[]> => {
-	try {
-		const response = await axios.post("/program/properties", {
-			filters,
-			userPublicKey,
-			forceRefresh,
-		});
+  try {
+    const response = await axios.post("/program/properties", {
+      filters,
+      userPublicKey,
+      forceRefresh,
+    });
 
-		const properties: Property[] = response.data.properties;
+    const properties: Property[] = response.data.properties;
 
-		return properties;
-	} catch (error) {
-		console.error("Error fetching properties:", error);
-		throw error;
-	}
+    return properties;
+  } catch (error) {
+    // console.error("Error fetching properties:", error);
+    throw error;
+  }
 };
 
 export const getProperty = async (propertyPda: string): Promise<Property> => {
-	try {
-		const response = await axios.get(`/program/properties/${propertyPda}`);
+  try {
+    const response = await axios.get(`/program/properties/${propertyPda}`);
 
-		const property: Property = response.data.property;
+    const property: Property = response.data.property;
 
-		return property;
-	} catch (error) {
-		console.error("Error fetching properties:", error);
-		throw error;
-	}
+    return property;
+  } catch (error) {
+    // console.error("Error fetching properties:", error);
+    throw error;
+  }
 };
 
 interface GetInvestmentsArgs {
-	publicKey: string;
-	forceRefresh?: boolean;
+  publicKey: string;
+  forceRefresh?: boolean;
 }
 
 interface GetInvestmentsResponse {
-	investmentsData: Investment[];
-	invested: number;
-	returns: number;
-	properties: Property[];
+  investmentsData: Investment[];
+  invested: number;
+  returns: number;
+  properties: Property[];
 }
 
 export const getInvestments = async ({
-	publicKey,
-	forceRefresh = false,
+  publicKey,
+  forceRefresh = false,
 }: GetInvestmentsArgs): Promise<GetInvestmentsResponse> => {
-	try {
-		const response = await axios.post("/program/investments", {
-			publicKey,
-			forceRefresh,
-		});
+  try {
+    const response = await axios.post("/program/investments", {
+      publicKey,
+      forceRefresh,
+    });
 
-		const { investmentsData, invested, returns, properties } =
-			response.data;
+    const { investmentsData, invested, returns, properties } = response.data;
 
-		return { investmentsData, invested, returns, properties };
-	} catch (error) {
-		console.error("Error fetching investments:", error);
-		throw error;
-	}
+    return { investmentsData, invested, returns, properties };
+  } catch (error) {
+    // console.error("Error fetching investments:", error);
+    throw error;
+  }
 };
 
 export const getInvestment = async (
-	investmentPda: string
+  investmentPda: string,
 ): Promise<Investment> => {
-	try {
-		const response = await axios.get(
-			`/program/investments/${investmentPda}`
-		);
+  try {
+    const response = await axios.get(`/program/investments/${investmentPda}`);
 
-		const investment: Investment = response.data.investment;
+    const investment: Investment = response.data.investment;
 
-		return investment;
-	} catch (error) {
-		console.error("Error fetching investments:", error);
-		throw error;
-	}
+    return investment;
+  } catch (error) {
+    // console.error("Error fetching investments:", error);
+    throw error;
+  }
 };
 
 export const fetchInvestmentPDA = async (
-	programId: PublicKey,
-	userPublicKey: string,
-	propertyPda: string
+  programId: PublicKey,
+  userPublicKey: string,
+  propertyPda: string,
 ): Promise<{
-	pda: PublicKey | null;
-	exists: boolean;
+  pda: PublicKey | null;
+  exists: boolean;
 }> => {
-	if (!userPublicKey || !propertyPda) {
-		return {
-			pda: null,
-			exists: false,
-		};
-	}
+  if (!userPublicKey || !propertyPda) {
+    return {
+      pda: null,
+      exists: false,
+    };
+  }
 
-	console.log("userPublicKey", userPublicKey);
-	console.log("propertyPda", propertyPda);
-	console.log("programId", programId.toBase58());
+  // console.log("userPublicKey", userPublicKey);
+  // console.log("propertyPda", propertyPda);
+  // console.log("programId", programId.toBase58());
 
-	const [investmentPda] = PublicKey.findProgramAddressSync(
-		[
-			Buffer.from("investment"),
-			Buffer.from(userPublicKey),
-			new PublicKey(propertyPda).toBuffer(),
-		],
-		programId
-	);
+  const [investmentPda] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("investment"),
+      Buffer.from(userPublicKey),
+      new PublicKey(propertyPda).toBuffer(),
+    ],
+    programId,
+  );
 
-	const investment = await getInvestment(investmentPda.toBase58());
+  const investment = await getInvestment(investmentPda.toBase58());
 
-	return {
-		pda: investmentPda,
-		exists: !!investment,
-	};
+  return {
+    pda: investmentPda,
+    exists: !!investment,
+  };
 };
 
 export interface Investment {
-	publicKey: string;
-	investor: string;
-	property: string;
-	amount: number;
-	dividendsClaimed: number;
+  publicKey: string;
+  investor: string;
+  property: string;
+  amount: number;
+  dividendsClaimed: number;
 }
 
 export interface GetUsersResponse {
-	name: string;
-	wallet: string;
-	investments: Investment[];
+  name: string;
+  wallet: string;
+  investments: Investment[];
 }
 
 export const getUsers = async (
-	landlordPublicKey: string
+  landlordPublicKey: string,
 ): Promise<GetUsersResponse[]> => {
-	try {
-		const response = await axios.get(`/user/admin/users/${landlordPublicKey}`);
+  try {
+    const response = await axios.get(`/user/admin/users/${landlordPublicKey}`);
 
-		const users = response.data;
+    const users = response.data;
 
-		console.log("users", users);
+    // console.log("users", users);
 
-		return users;
-	} catch (error) {
-		console.error("Error fetching users:", error);
-		throw error;
-	}
+    return users;
+  } catch (error) {
+    // console.error("Error fetching users:", error);
+    throw error;
+  }
 };

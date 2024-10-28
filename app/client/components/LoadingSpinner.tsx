@@ -7,7 +7,9 @@ export const LoadingSpinner = ({
   height?: number;
   margin?: number;
 }) => (
-  <div className={`flex justify-center items-center h-${height} w-${height} m-${margin}`}>
+  <div
+    className={`flex justify-center items-center h-${height} w-${height} m-${margin}`}
+  >
     <Loader2 className="w-8 h-8 animate-spin text-primary" />
   </div>
 );

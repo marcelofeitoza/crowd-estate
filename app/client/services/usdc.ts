@@ -27,7 +27,7 @@ export const checkUsdcAccount = async (
         .getTokenAccountBalance(userUsdcAddress)
         .then((balance) => balance.value.uiAmount)
         .catch((error) => {
-          console.error("Error fetching USDC balance:", error);
+          // console.error("Error fetching USDC balance:", error);
           return 0;
         });
 
@@ -36,7 +36,7 @@ export const checkUsdcAccount = async (
       throw new Error("USDC account not found");
     }
   } catch (error) {
-    console.error("Error checking USDC account:", error);
+    // console.error("Error checking USDC account:", error);
     throw new Error("Error checking USDC account");
   }
 };
@@ -97,7 +97,7 @@ export const getUsdcBalance = async (
 
     return balance;
   } catch (error) {
-    console.error("Error fetching USDC balance:", error);
+    // console.error("Error fetching USDC balance:", error);
     throw new Error("Error fetching USDC balance");
   }
 };
