@@ -93,8 +93,8 @@ export default function Invest() {
 
 	useEffect(() => {
 		if (wallet.publicKey) {
-			fetchProperties();
-			fetchInvestments();
+			fetchProperties(true);
+			fetchInvestments(true);
 		}
 	}, [fetchInvestments, fetchProperties, wallet]);
 

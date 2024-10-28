@@ -424,6 +424,10 @@
           "writable": true
         },
         {
+          "name": "property_usdc_account",
+          "writable": true
+        },
+        {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },

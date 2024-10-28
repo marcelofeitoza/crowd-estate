@@ -1,6 +1,7 @@
 import express from "express";
 import { handleLogin } from "../controllers/user/login";
 import { handleRegister } from "../controllers/user/register";
+import { getAllUsersWithInvestments } from "../controllers/user/user";
 
 const router = express.Router();
 
@@ -21,5 +22,7 @@ router.post("/register", async (req, res, next) => {
 		next(error);
 	}
 });
+
+router.get("/admin/users/:landlord", getAllUsersWithInvestments);
 
 export default router;

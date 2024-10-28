@@ -1,5 +1,5 @@
 import { axios } from "@/utils/axios";
-import { Investment, Property } from "@/utils/solana";
+import { Property } from "@/utils/solana";
 import { PublicKey } from "@solana/web3.js";
 
 export enum Filters {
@@ -132,4 +132,35 @@ export const fetchInvestmentPDA = async (
 		pda: investmentPda,
 		exists: !!investment,
 	};
+};
+
+export interface Investment {
+	publicKey: string;
+	investor: string;
+	property: string;
+	amount: number;
+	dividendsClaimed: number;
+}
+
+export interface GetUsersResponse {
+	name: string;
+	wallet: string;
+	investments: Investment[];
+}
+
+export const getUsers = async (
+	landlordPublicKey: string
+): Promise<GetUsersResponse[]> => {
+	try {
+		const response = await axios.get(`/user/admin/users/${landlordPublicKey}`);
+
+		const users = response.data;
+
+		console.log("users", users);
+
+		return users;
+	} catch (error) {
+		console.error("Error fetching users:", error);
+		throw error;
+	}
 };

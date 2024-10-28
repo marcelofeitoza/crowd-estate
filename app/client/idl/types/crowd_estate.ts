@@ -430,6 +430,10 @@ export type CrowdEstate = {
           "writable": true
         },
         {
+          "name": "propertyUsdcAccount",
+          "writable": true
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },

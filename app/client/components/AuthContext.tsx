@@ -1,6 +1,6 @@
 "use client";
 import { getUserData, registerUser } from "@/services/user";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
 	createContext,
 	useContext,
@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
 	const [user, setUser] = useState<User | null>(null);
 	const router = useRouter();
+	const pathname = usePathname();
 
 	useEffect(() => {
 		const storedUser = localStorage.getItem("user");
@@ -108,10 +109,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		[router]
 	);
 
+
 	const logout = () => {
 		setIsAuthenticated(false);
 		setUser(null);
 		localStorage.removeItem("user");
+
+		if (pathname !== "/") {
+			router.push("/");
+		}
 	};
 
 	useEffect(() => {
