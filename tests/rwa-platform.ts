@@ -384,7 +384,7 @@ describe("RWA Platform", async () => {
 				admin: admin.publicKey,
 				adminUsdcAccount: adminUsdcAccount.address,
 				property: propertyPda,
-				propertyUsdcAccount: propertyUsdcVault.address,
+				// propertyUsdcAccount: propertyUsdcVault.address,
 				tokenProgram: TOKEN_PROGRAM_ID,
 				systemProgram: SystemProgram.programId,
 			})
